@@ -2,41 +2,41 @@ module slave #(
     parameter DATA_WIDTH = 32,
     parameter ADDR_WIDTH = 32
 ) (
-    input clk,
-    input rst_n,
+    input   clk,
+    input   rst_n,
 
-    input [ADDR_WIDTH-1:0] awaddr,
-    input awvalid,
-    output reg awready,
+    input [ADDR_WIDTH-1:0]          awaddr,
+    input                           awvalid,
+    output reg                      awready,
 
-    input [DATA_WIDTH-1:0] wdata,
-    input wvalid,
-    output reg wready,
+    input [DATA_WIDTH-1:0]          wdata,
+    input                           wvalid,
+    output reg                      wready,
 
-    output reg [1:0] bresp,
-    output reg bvalid,
-    input bready,
+    output reg [1:0]                bresp,
+    output reg                      bvalid,
+    input                           bready,
 
-    input [ADDR_WIDTH-1:0] araddr,
-    input arvalid,
-    output reg arready,
+    input [ADDR_WIDTH-1:0]          araddr,
+    input                           arvalid,
+    output reg                      arready,
 
-    output reg [DATA_WIDTH-1:0] rdata,
-    output reg [1:0] rresp,
-    output reg rvalid,
-    input rready,
+    output reg [DATA_WIDTH-1:0]     rdata,
+    output reg [1:0]                rresp,
+    output reg                      rvalid,
+    input                           rready,
 
-    input tx_full,
-    output tx_clk,
-    output tx_rst_n,
-    output reg tx_wr_en,
-    output reg [DATA_WIDTH-1:0] tx_data,
+    input                           tx_full,
+    output                          tx_clk,
+    output                          tx_rst_n,
+    output reg                      tx_wr_en,
+    output reg [DATA_WIDTH-1:0]     tx_data,
 
-    input rx_empty,
-    output rx_clk,
-    output rx_rst_n,
-    output reg rx_rd_en,
-    input [DATA_WIDTH-1:0] rx_data
+    input                           rx_empty,
+    output                          rx_clk,
+    output                          rx_rst_n,
+    output reg                      rx_rd_en,
+    input [DATA_WIDTH-1:0]          rx_data
 );
 
 reg [DATA_WIDTH-1:0] ctrl;
