@@ -137,6 +137,8 @@ always @(posedge clk or negedge rst_n) begin
                         bvalid <= 1'b1;
                     end
                 endcase
+                rd_en_waddr <= 1'b1;
+                rd_en_wdata <= 1'b1;
             end
         end
     end
