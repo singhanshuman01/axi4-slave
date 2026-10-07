@@ -6,10 +6,12 @@ module slave #(
     input   rst_n,
 
     input [ADDR_WIDTH-1:0]          awaddr,
+    input [7:0]                     awburst,
     input                           awvalid,
     output reg                      awready,
 
     input [DATA_WIDTH-1:0]          wdata,
+    input [$clog2(DATA_WIDTH)-1:0]  wstrb,
     input                           wvalid,
     output reg                      wready,
 
@@ -56,7 +58,7 @@ wire full_waddr, empty_waddr;
 reg [ADDR_WIDTH-1:0] wr_data_waddr;
 wire [ADDR_WIDTH-1:0] rd_data_waddr;
 sync_fifo #(
-    .DATA_WIDTH(DATA_WIDTH),
+    .DATA_WIDTH(DATA_WIDTH+8),
     .MEM_DEPTH(16)
 ) waddr_fifo (
     .clk(clk),
@@ -69,119 +71,77 @@ sync_fifo #(
     .rd_data(rd_data_waddr)
 );
 
+localparam IDLE = 2'b00,
+            WRITE = 2'b01,
+            RESP = 2'b10;
 
-
-reg wr_en_wdata, rd_en_wdata;
-wire full_wdata, empty_wdata;
-reg [ADDR_WIDTH-1:0] wr_data_wdata;
-wire [ADDR_WIDTH-1:0] rd_data_wdata;
-sync_fifo #(
-    .DATA_WIDTH(DATA_WIDTH),
-    .MEM_DEPTH(16)
-) wdata_fifo (
-    .clk(clk),
-    .rst_n(rst_n),
-    .wr_en(wr_en_wdata),
-    .wr_data(wr_data_wdata),
-    .full(full_wdata),
-    .rd_en(rd_en_wdata),
-    .empty(empty_wdata),
-    .rd_data(rd_data_wdata)
-);
+reg [1:0] state;
 
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        awready <= 1'b0;
-        wready <= 1'b0;
-        bvalid <= 1'b0;
-    end else begin
-        wr_en_waddr <= 1'b0;
-        awready <= 1'b0;
-        if(awvalid && !awready && !full_waddr) awready <= 1'b1;
+    if(!rst_n) awready <= 1'b0;
+    else begin
         if(awvalid && awready) begin
             wr_en_waddr <= 1'b1;
-            wr_data_waddr <= awaddr;
+            wr_data_waddr <= {awburst, awaddr};
+            awready <= 1'b0;
         end
-
-        wready <= 1'b0;
-        wr_en_wdata <= 1'b0;
-        if(wvalid && !wready && !full_wdata) wready <= 1'b1;
-        if(wvalid && wready) begin
-            wr_en_wdata <= 1'b1;
-            wr_data_wdata <= wdata;
-        end
-
-        tx_wr_en <= 1'b0;
-        rd_en_waddr <= 1'b0;
-        rd_en_wdata <= 1'b0;
-        if(bvalid && bready) bvalid <= 1'b0;
-        if(!empty_waddr && !empty_wdata && (!bvalid || bready)) begin
-            if(rd_data_waddr[1:0] != 2'b00) begin
-                bresp <= 2'b10;
-                bvalid <= 1'b1;
-            end else begin
-                case (rd_data_waddr[3:2])
-                    2'b00: begin
-                        ctrl <= rd_data_wdata;
-                        bresp <= 2'b00;
-                        bvalid <= 1'b1;
-                    end
-
-                    2'b10: begin
-                        tx_wr_en <= 1'b1;
-                        tx_data <= rd_data_wdata;
-                    end
-
-                    default: begin
-                        bresp <= 2'b10;
-                        bvalid <= 1'b1;
-                    end
-                endcase
-                rd_en_waddr <= 1'b1;
-                rd_en_wdata <= 1'b1;
-            end
-        end
+        else if(awvalid && !full_waddr) awready <= 1'b1;
+        else awready <= 1'b0;
     end
 end
 
-reg [ADDR_WIDTH-1:0] raddr_latch;
-reg have_raddr;
+reg [7:0] burstcnt;
+reg [ADDR_WIDTH-1:0] wr_addr;
+reg [1:0] resp_rg;
 
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        arready <= 1'b0;
-        rvalid <= 1'b0;
-        have_raddr <= 1'b0;
-    end else begin
-        arready <= 1'b0;
-        if(arvalid && !rx_empty) arready <= 1'b1;
-
-        have_raddr <= 1'b0;
-        if(arvalid && arready) begin
-            raddr_latch <= araddr;
-            have_raddr <= 1'b1;
-        end
-
-        rx_rd_en <= 1'b0;
-        if(rvalid && rready) rvalid <= 1'b0;
-        if(have_raddr) begin
-            if((raddr_latch[1:0] != 2'b00) || (raddr_latch[3:2]==2'b10)) begin
-                rresp <= 2'b10;
-                rvalid <= 1'b1;
-            end else begin
-                case (raddr_latch[3:2])
-                    2'b00: rdata <= ctrl;
-                    2'b01: rdata <= status;
-                    2'b11: begin
-                        rdata <= rx_data;
-                        rx_rd_en <= 1'b1;
-                    end
-                    default: ;
-                endcase
-                rresp <= 2'b00;
-                rvalid <= 1'b1;
+    if(!rst_n) state = IDLE;
+    else begin
+        case (state)
+            IDLE: begin
+                wready <= 1'b0;
+                bvalid <= 1'b0;
+                tx_wr_en <= 1'b0;
+                if(!empty_waddr) begin
+                    {burstcnt, wr_addr} <= rd_data_waddr;
+                    rd_en_waddr <= 1'b1;
+                    state <= WRITE;
+                end
             end
-        end
+            WRITE: begin
+                wready <= (!tx_full)? 1'b1: 1'b0;
+                if(wvalid && wready) begin
+                    if(wr_addr[1:0] != 2'b00) begin
+                        resp_rg <= 2'b10;
+                    end else begin
+                        case (wr_addr[3:2])
+                            2'b00: begin
+                                ctrl <= wdata;
+                                resp_rg <= 2'b00;
+                            end
+                            2'b10: begin
+                                tx_wr_en <= 1'b1;
+                                tx_data <= {wstrb, wdata};
+                                resp_rg <= 2'b00;
+                            end
+                            default: resp_rg <= 2'b10;
+                        endcase
+                        if(burstcnt == 0) begin
+                            state <= RESP;
+                            wready <= 1'b0;
+                            bresp <= resp_rg;
+                        end else begin
+                            burstcnt <= burstcnt - 1'b1;
+                        end
+                    end
+                end
+            end
+            RESP: begin
+                bvalid <= 1'b1;
+                if(bvalid && bready) state <= IDLE;s
+            end
+            default: state = IDLE;
+        endcase
     end
 end
 
