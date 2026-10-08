@@ -80,13 +80,9 @@ reg [1:0] state;
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) awready <= 1'b0;
     else begin
-        if(awvalid && awready) begin
-            wr_en_waddr <= 1'b1;
-            wr_data_waddr <= {awburst, awaddr};
-            awready <= 1'b0;
-        end
-        else if(awvalid && !full_waddr) awready <= 1'b1;
-        else awready <= 1'b0;
+        wr_en_waddr <= (awvalid && awready) ? 1'b1: 1'b0;
+        awready <= (awvalid && !full_waddr && !awready) ? 1'b1: 1'b0;
+        wr_data_waddr <= {awburst, awaddr};
     end
 end
 
