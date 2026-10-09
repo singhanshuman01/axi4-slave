@@ -99,13 +99,14 @@ always @(posedge clk or negedge rst_n) begin
                 bvalid <= 1'b0;
                 tx_wr_en <= 1'b0;
                 if(!empty_waddr) begin
-                    {burstcnt, wr_addr} <= rd_data_waddr;
-                    rd_en_waddr <= 1'b1;
+                    rd_en_waddr <= 1'b1;                    
                     state <= WRITE;
                 end
             end
             WRITE: begin
+                if(rd_en_waddr) {burstcnt, wr_addr} <= rd_data_waddr;
                 wready <= (!tx_full)? 1'b1: 1'b0;
+                if(burstcnt == 0) state <= RESP;
                 if(wvalid && wready) begin
                     if(wr_addr[1:0] != 2'b00) begin
                         resp_rg <= 2'b10;
@@ -122,19 +123,15 @@ always @(posedge clk or negedge rst_n) begin
                             end
                             default: resp_rg <= 2'b10;
                         endcase
-                        if(burstcnt == 0) begin
-                            state <= RESP;
-                            wready <= 1'b0;
-                            bresp <= resp_rg;
-                        end else begin
-                            burstcnt <= burstcnt - 1'b1;
-                        end
                     end
+                    burstcnt <= burstcnt - 1'b1;
                 end
             end
             RESP: begin
+                wready <= 1'b0;
+                bresp <= resp_rg;
                 bvalid <= 1'b1;
-                if(bvalid && bready) state <= IDLE;s
+                if(bvalid && bready) state <= IDLE;
             end
             default: state = IDLE;
         endcase
