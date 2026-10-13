@@ -11,7 +11,7 @@ module slave #(
     output reg                      awready,
 
     input [DATA_WIDTH-1:0]          wdata,
-    input [$clog2(DATA_WIDTH)-1:0]  wstrb,
+    input [$clog2(DATA_WIDTH)-2:0]  wstrb,
     input                           wvalid,
     output reg                      wready,
 
