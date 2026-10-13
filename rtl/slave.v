@@ -197,15 +197,19 @@ always @(posedge clk or negedge rst_n) begin
             end
         end
         R_READ: begin
-            // rvalid <= 1'b0;
+            
             if(rd_en_raddr) begin
                 rd_en_raddr <= 1'b0;
                 {r_burstcnt, rd_addr} <= rd_data_raddr;
             end
-            // if(r_burstcnt==0) r_state <= IDLE;
+            
             if(!rvalid || rready) begin
                 if(rd_addr[1:0] != 2'b00) begin
-                    rresp_rg <= 2'b10;
+                    rdata <= 0;
+                    rresp <= 2'b10;
+                    rvalid <= 1'b1;
+                    if(r_burstcnt==0) state <= R_IDLE;
+                    else r_burstcnt <= r_burstcnt-1'b1;
                 end else begin
                     case(rd_addr[3:2])
                     2'b00: begin
@@ -240,7 +244,7 @@ always @(posedge clk or negedge rst_n) begin
                     end
                     2'b11: begin
                         if(!rx_empty) begin
-                            rx_rd_en <= rx_rd_en == 1'b0;
+                            rx_rd_en <= 1'b1;
                             if(rx_rd_en) begin                                
                                 rdata <= rx_data;
                                 rresp <= 2'b00;
@@ -253,7 +257,7 @@ always @(posedge clk or negedge rst_n) begin
                                     r_burstcnt <= r_burstcnt-1'b1;
                                 end
                             end
-                        end
+                        end else rvalid <= 1'b0;
                     end
                     default: state <= R_IDLE;
                     endcase
