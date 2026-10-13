@@ -56,8 +56,8 @@ end
 
 reg wr_en_waddr, rd_en_waddr;
 wire full_waddr, empty_waddr;
-reg [ADDR_WIDTH-1:0] wr_data_waddr;
-wire [ADDR_WIDTH-1:0] rd_data_waddr;
+reg [ADDR_WIDTH+8-1:0] wr_data_waddr;
+wire [ADDR_WIDTH+8-1:0] rd_data_waddr;
 sync_fifo #(
     .DATA_WIDTH(DATA_WIDTH+8),
     .MEM_DEPTH(16)
@@ -146,8 +146,8 @@ end
 
 reg wr_en_raddr, rd_en_raddr;
 wire full_raddr, empty_raddr;
-reg [ADDR_WIDTH-1:0] wr_data_raddr;
-wire [ADDR_WIDTH-1:0] rd_data_raddr;
+reg [ADDR_WIDTH+8-1:0] wr_data_raddr;
+wire [ADDR_WIDTH+8-1:0] rd_data_raddr;
 sync_fifo #(
     .DATA_WIDTH(DATA_WIDTH+8),
     .MEM_DEPTH(16)
