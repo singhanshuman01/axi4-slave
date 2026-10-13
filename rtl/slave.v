@@ -20,6 +20,7 @@ module slave #(
     input                           bready,
 
     input [ADDR_WIDTH-1:0]          araddr,
+    input [8:0]                     arburst,
     input                           arvalid,
     output reg                      arready,
 
@@ -44,7 +45,7 @@ module slave #(
 reg [DATA_WIDTH-1:0] ctrl;
 reg [DATA_WIDTH-1:0] status;
 
-always @(*) begin
+always @(posedge clk) begin
     status[0] = 1'b0;
     status[1] = !rx_empty;
     status[2] = tx_full;
@@ -104,8 +105,11 @@ always @(posedge clk or negedge rst_n) begin
                 end
             end
             WRITE: begin
-                if(rd_en_waddr) {burstcnt, wr_addr} <= rd_data_waddr;
-                wready <= (!tx_full)? 1'b1: 1'b0;
+                if(rd_en_waddr) begin
+                    {burstcnt, wr_addr} <= rd_data_waddr;
+                    rd_en_waddr <= 1'b0;
+                end
+                wready <= !tx_full;
                 if(burstcnt == 0) state <= RESP;
                 if(wvalid && wready) begin
                     if(wr_addr[1:0] != 2'b00) begin
@@ -129,6 +133,7 @@ always @(posedge clk or negedge rst_n) begin
             end
             RESP: begin
                 wready <= 1'b0;
+                tx_wr_en <= 1'b0;
                 bresp <= resp_rg;
                 bvalid <= 1'b1;
                 if(bvalid && bready) state <= IDLE;
@@ -137,5 +142,128 @@ always @(posedge clk or negedge rst_n) begin
         endcase
     end
 end
+
+
+reg wr_en_raddr, rd_en_raddr;
+wire full_raddr, empty_raddr;
+reg [ADDR_WIDTH-1:0] wr_data_raddr;
+wire [ADDR_WIDTH-1:0] rd_data_raddr;
+sync_fifo #(
+    .DATA_WIDTH(DATA_WIDTH+8),
+    .MEM_DEPTH(16)
+) raddr_fifo (
+    .clk(clk),
+    .rst_n(rst_n),
+    .wr_en(wr_en_raddr),
+    .wr_data(wr_data_raddr),
+    .full(full_raddr),
+    .rd_en(rd_en_raddr),
+    .empty(empty_raddr),
+    .rd_data(rd_data_raddr)
+);
+
+localparam R_IDLE = 1'b0,
+            R_READ = 1'b1;
+
+reg r_state;
+
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) arready <= 1'b0;
+    else begin
+        wr_data_raddr <= {arburst, araddr};
+        arready <= 1'b0;
+        if(arvalid && !empty_raddr && !arready) arready <= 1'b1;
+        if(arvalid && arready) begin
+            rd_en_raddr <= 1'b1;
+            arready <= 1'b0;
+        end
+    end
+end
+
+reg [7:0] r_burstcnt;
+reg [ADDR_WIDTH-1:0] rd_addr;
+reg [1:0] rresp_rg;
+
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) state = R_IDLE;
+    else begin
+        case(state)
+        R_IDLE: begin
+            rvalid <= 1'b0;
+            rx_rd_en <= 1'b0;
+            if(!empty_raddr) begin
+                rd_en_raddr <= 1'b1;
+                state <= R_READ;
+            end
+        end
+        R_READ: begin
+            rvalid <= 1'b0;
+            if(rd_en_raddr) begin
+                rd_en_raddr <= 1'b0;
+                {r_burstcnt, rd_addr} <= rd_data_raddr;
+            end
+            // if(r_burstcnt==0) r_state <= IDLE;
+            if(rready) begin
+                if(rd_addr[1:0] != 2'b00) begin
+                    rresp_rg <= 2'b10;
+                end else begin
+                    case(rd_addr[3:2])
+                    2'b00: begin
+                        rdata <= ctrl;
+                        rresp <= 2'b00;
+                        rvalid <= 1'b1;
+                        if(r_burstcnt==0) state <= R_IDLE;
+                        else begin
+                            state <= R_READ;
+                            r_burstcnt <= r_burstcnt-1'b1;
+                        end
+                    end
+                    2'b01: begin
+                        rdata <= status;
+                        rresp <= 2'b00;
+                        rvalid <= 1'b1;
+                        if(r_burstcnt==0) state <= R_IDLE;
+                        else begin
+                            state <= R_READ;
+                            r_burstcnt <= r_burstcnt-1'b1;
+                        end
+                    end
+                    2'b10: begin
+                        rdata <= 0;
+                        rresp <= 2'b10;
+                        rvalid <= 1'b1;
+                        if(r_burstcnt==0) state <= R_IDLE;
+                        else begin
+                            state <= R_READ;
+                            r_burstcnt <= r_burstcnt-1'b1;
+                        end
+                    end
+                    2'b11: begin
+                        if(!rx_empty) begin
+                            rx_rd_en <= rx_rd_en == 1'b0;
+                            if(rx_rd_en) begin                                
+                                rdata <= rx_data;
+                                rresp <= 2'b00;
+                                rvalid <= 1'b1;
+                                state <= (r_burstcnt==0) ? R_IDLE: R_READ;
+                                if(r_burstcnt==0) begin
+                                    rx_rd_en <= 1'b0;
+                                end
+                                else begin
+                                    r_burstcnt <= r_burstcnt-1'b1;
+                                end
+                            end
+                        end
+                    end
+                    default: state <= R_IDLE;
+                    endcase
+                end
+            end
+        end
+        default: state <= R_IDLE;
+        endcase
+    end
+end
+
 
 endmodule

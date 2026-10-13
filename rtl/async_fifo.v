@@ -1,5 +1,6 @@
 module async_fifo #(
-    parameter DATA_WIDTH = 32
+    parameter DATA_WIDTH = 32,
+    parameter MEM_DEPTH = 16
 )
 (
     output [DATA_WIDTH-1:0] r_data,
@@ -14,7 +15,10 @@ wire [4:0] nxt_wptr_gray, nxt_rptr_gray;
 wire [3:0] waddr, raddr;
 wire [4:0] sync_nxt_wptr_gray, sync_nxt_rptr_gray;
 
-memory #(.DATA_WIDTH(DATA_WIDTH)) mem_inst(
+memory #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .MEM_DEPTH(MEM_DEPTH)
+) mem_inst(
     .read_data  (r_data),
     .write_data (w_data),
     .read_addr  (raddr),
@@ -27,21 +31,27 @@ memory #(.DATA_WIDTH(DATA_WIDTH)) mem_inst(
     .full       (full)
 );
 
-sync_wptr sync_wptr_inst(
+sync_wptr #(
+    .MEM_DEPTH(MEM_DEPTH)
+) sync_wptr_inst(
     .sync_write_ptr (sync_nxt_wptr_gray),
     .wptr           (nxt_wptr_gray),
     .rclk           (rclk),
     .rrst_n         (rrst_n)
 );
 
-sync_rptr sync_rptr_inst (
+sync_rptr #(
+    .MEM_DEPTH(MEM_DEPTH)
+) sync_rptr_inst (
     .sync_read_ptr  (sync_nxt_rptr_gray),
     .rptr           (nxt_rptr_gray),
     .write_clk      (wclk),
     .wrst_n         (wrst_n)
 );
 
-handler_rptr handler_rptr_inst (
+handler_rptr #(
+    .MEM_DEPTH(MEM_DEPTH)
+) handler_rptr_inst (
     .read_addr      (raddr),
     .rptr           (nxt_rptr_gray),
     .empty          (empty),
@@ -51,7 +61,9 @@ handler_rptr handler_rptr_inst (
     .arst_n         (rrst_n)
 );
 
-handler_wptr handler_wptr_inst (
+handler_wptr #(
+    .MEM_DEPTH(MEM_DEPTH)
+) handler_wptr_inst (
     .write_addr     (waddr),
     .write_ptr      (nxt_wptr_gray),
     .full           (full),
@@ -64,18 +76,23 @@ handler_wptr handler_wptr_inst (
 endmodule
 
 module memory #(
-    parameter DATA_WIDTH = 32
+    parameter DATA_WIDTH = 32,
+    parameter MEM_DEPTH = 16
 ) (
-    output [DATA_WIDTH-1:0]    read_data,
-    input [DATA_WIDTH-1:0]     write_data,
-    input [3:0]     read_addr, write_addr,
-    input           rclk, ren, empty,
-    input           wclk, wen, full 
+    output reg [DATA_WIDTH-1:0]     read_data,
+    input [DATA_WIDTH-1:0]          write_data,
+    input [$clog2(MEM_DEPTH)-1:0]   read_addr, write_addr,
+    input                           rclk, ren, empty,
+    input                           wclk, wen, full 
 );
 
-reg [DATA_WIDTH-1:0] mem [0:15];
+reg [DATA_WIDTH-1:0] mem [0:MEM_DEPTH-1];
 
-assign read_data = mem[read_addr];
+// assign read_data = mem[read_addr];
+
+always @(posedge rclk) begin
+    if(ren && !empty) read_data <= mem[read_addr];
+end
 
 always @(posedge wclk) begin
     if (wen && !full) mem[write_addr] <= write_data;
@@ -83,16 +100,18 @@ end
 
 endmodule
 
-module handler_rptr (
-    output [3:0]        read_addr,
-    output reg [4:0]    rptr,
-    output reg          empty,
-    input [4:0]         sync_gray_wptr,
-    input               en, clk, arst_n
+module handler_rptr #(
+    parameter MEM_DEPTH = 16
+) (
+    output [$clog2(MEM_DEPTH)-1:0]      read_addr,
+    output reg [$clog2(MEM_DEPTH):0]    rptr,
+    output reg                          empty,
+    input [$clog2(MEM_DEPTH):0]         sync_gray_wptr,
+    input                               en, clk, arst_n
 );
 
-reg [4:0] local_read_addr_bin;
-wire [4:0] next_read_gray, next_read_bin;
+reg [$clog2(MEM_DEPTH):0] local_read_addr_bin;
+wire [$clog2(MEM_DEPTH):0] next_read_gray, next_read_bin;
 wire empty_r;
 
 always @(posedge clk or negedge arst_n) begin
@@ -100,7 +119,7 @@ always @(posedge clk or negedge arst_n) begin
     else {rptr, local_read_addr_bin} <= {next_read_gray, next_read_bin};
 end
 
-assign read_addr = local_read_addr_bin[3:0];
+assign read_addr = local_read_addr_bin[$clog2(MEM_DEPTH)-1:0];
 
 assign next_read_bin = local_read_addr_bin + (en & !empty);
 assign next_read_gray = next_read_bin ^ (next_read_bin>>1);
@@ -114,16 +133,18 @@ end
 
 endmodule
 
-module handler_wptr (
-    output [3:0]        write_addr,
-    output reg [4:0]    write_ptr,
+module handler_wptr #(
+    parameter MEM_DEPTH = 16
+)(
+    output [$clog2(MEM_DEPTH)-1:0]        write_addr,
+    output reg [$clog2(MEM_DEPTH):0]    write_ptr,
     output reg          full,
-    input [4:0]         sync_gray_rptr,
+    input [$clog2(MEM_DEPTH):0]         sync_gray_rptr,
     input               en, clk, rst_n
 );
 
-reg [4:0] local_write_addr;
-wire [4:0] next_write_addr_bin, next_write_addr_gray;
+reg [$clog2(MEM_DEPTH):0] local_write_addr;
+wire [$clog2(MEM_DEPTH):0] next_write_addr_bin, next_write_addr_gray;
 wire full_w;
 
 always @(posedge clk or negedge rst_n) begin
@@ -131,7 +152,7 @@ always @(posedge clk or negedge rst_n) begin
     else {local_write_addr, write_ptr} <= {next_write_addr_bin, next_write_addr_gray};
 end
 
-assign write_addr = local_write_addr[3:0];
+assign write_addr = local_write_addr[$clog2(MEM_DEPTH)-1:0];
 
     assign next_write_addr_bin = local_write_addr + (en & ~full);
 assign next_write_addr_gray = next_write_addr_bin ^ (next_write_addr_bin>>1);
@@ -146,14 +167,16 @@ end
 
 endmodule
 
-module sync_rptr (
-    output reg [4:0]    sync_read_ptr,
-    input [4:0]         rptr,
+module sync_rptr #(
+    parameter MEM_DEPTH = 16
+) (
+    output reg [$clog2(MEM_DEPTH):0]    sync_read_ptr,
+    input [$clog2(MEM_DEPTH):0]         rptr,
     input               write_clk,
     input               wrst_n
 );
 
-reg [4:0] temp;
+reg [$clog2(MEM_DEPTH):0] temp;
 
 always @(posedge write_clk or negedge wrst_n ) begin
     if(!wrst_n) {sync_read_ptr, temp} <= 0;
@@ -163,13 +186,15 @@ end
 endmodule
 
 
-module sync_wptr (
-    output reg [4:0]    sync_write_ptr,
-    input [4:0]         wptr,
+module sync_wptr #(
+    parameter MEM_DEPTH = 16
+) (
+    output reg [$clog2(MEM_DEPTH):0]    sync_write_ptr,
+    input [$clog2(MEM_DEPTH):0]         wptr,
     input               rclk, rrst_n
 );
 
-reg [4:0] temp;
+reg [$clog2(MEM_DEPTH):0] temp;
 
 always @(posedge rclk or negedge rrst_n) begin
     if(!rrst_n) {sync_write_ptr, temp} <= 0;
