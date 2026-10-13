@@ -78,6 +78,9 @@ localparam IDLE = 2'b00,
 
 reg [1:0] state;
 
+assign tx_clk = clk;
+assign tx_rst_n = rst_n;
+
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) awready <= 1'b0;
     else begin
@@ -166,6 +169,9 @@ localparam R_IDLE = 1'b0,
             R_READ = 1'b1;
 
 reg r_state;
+
+assign rx_clk = rx_clk;
+assign rx_rst_n = rst_n;
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) arready <= 1'b0;
