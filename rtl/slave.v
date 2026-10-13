@@ -197,13 +197,13 @@ always @(posedge clk or negedge rst_n) begin
             end
         end
         R_READ: begin
-            rvalid <= 1'b0;
+            // rvalid <= 1'b0;
             if(rd_en_raddr) begin
                 rd_en_raddr <= 1'b0;
                 {r_burstcnt, rd_addr} <= rd_data_raddr;
             end
             // if(r_burstcnt==0) r_state <= IDLE;
-            if(rready) begin
+            if(!rvalid || rready) begin
                 if(rd_addr[1:0] != 2'b00) begin
                     rresp_rg <= 2'b10;
                 end else begin
