@@ -25,11 +25,11 @@ always @(posedge clk or negedge rst_n) begin
         wptr <= 0;
         rptr <= 0;
     end else begin
-        if(wr_en) begin
+        if(wr_en && !full) begin
             mem[wptr[PTR_WIDTH-1:0]] <= wr_data;
             wptr <= wptr+1'b1;
         end
-        if(rd_en) begin
+        if(rd_en && !empty) begin
             rd_data <= mem[rptr[PTR_WIDTH-1:0]];
             rptr <= rptr + 1'b1;
         end
