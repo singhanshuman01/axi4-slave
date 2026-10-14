@@ -9,32 +9,32 @@ module top #(
     input [ADDR_WIDTH-1:0]          awaddr,
     input [7:0]                     awburst,
     input                           awvalid,
-    output reg                      awready,
+    output                          awready,
 
     input [DATA_WIDTH-1:0]          wdata,
     input [$clog2(DATA_WIDTH)-2:0]  wstrb,
     input                           wvalid,
-    output reg                      wready,
+    output                          wready,
 
-    output reg [1:0]                bresp,
-    output reg                      bvalid,
+    output [1:0]                    bresp,
+    output                          bvalid,
     input                           bready,
 
     input [ADDR_WIDTH-1:0]          araddr,
     input [8:0]                     arburst,
     input                           arvalid,
-    output reg                      arready,
+    output                          arready,
 
-    output reg [DATA_WIDTH-1:0]     rdata,
-    output reg [1:0]                rresp,
-    output reg                      rvalid,
+    output     [DATA_WIDTH-1:0]     rdata,
+    output     [1:0]                rresp,
+    output                          rvalid,
     input                           rready,
 
     output                          tx_empty,
     input                           tx_rclk,
     // input                           tx_rrst_n,
     input                           tx_rd_en,
-    output reg [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_rd_data,
+    output [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_rd_data,
 
     output                          rx_full,
     input                           rx_wclk,
@@ -46,7 +46,7 @@ module top #(
 wire tx_full, tx_wclk, tx_wrst_n, tx_wr_en;
 wire [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_wdata;
 async_fifo #(
-    .DATA_WIDTH(DATA_WIDTH),
+    .DATA_WIDTH(DATA_WIDTH+$clog2(DATA_WIDTH)-1),
     .MEM_DEPTH(MEM_DEPTH)
 ) TX_FIFO (
     .rclk(tx_rclk),
@@ -56,7 +56,7 @@ async_fifo #(
     .r_data(tx_rd_data),
     .wclk(tx_wclk),
     .wrst_n(tx_wrst_n),
-    .full(tx_full)
+    .full(tx_full),
     .write_en(tx_wr_en),
     .w_data(tx_wdata)
 );
@@ -75,7 +75,7 @@ async_fifo #(
     .r_data(rx_rdata),
     .wclk(rx_wclk),
     .wrst_n(rx_rrst_n),
-    .full(rx_full)
+    .full(rx_full),
     .write_en(rx_wr_en),
     .w_data(rx_wr_data)
 );
@@ -85,24 +85,43 @@ slave #(
     .ADDR_WIDTH(ADDR_WIDTH)
 ) axi4slave (
     .clk(clk),
-    .rst(rst),
+    .rst_n(rst_n),
+
     .awaddr(awaddr),
     .awburst(awburst),
     .awvalid(awvalid),
     .awready(awready),
+
     .wdata(wdata),
     .wstrb(wstrb),
     .wvalid(wvalid),
     .wready(wready),
+
     .bresp(bresp),
     .bvalid(bvalid),
     .bready(bready),
+
     .araddr(araddr),
     .arburst(arburst),
     .arvalid(arvalid),
     .arready(arready),
+
     .rdata(rdata),
     .rresp(rresp),
     .rvalid(rvalid),
     .rready(rready),
-)
+
+    .tx_full(tx_full),
+    .tx_clk(tx_wclk),
+    .tx_rst_n(tx_wrst_n),
+    .tx_wr_en(tx_wr_en),
+    .tx_data(tx_wdata),
+
+    .rx_empty(rx_empty),
+    .rx_clk(rx_rclk),
+    .rx_rst_n(rx_rrst_n),
+    .rx_rd_en(rx_rd_en),
+    .rx_data(rx_rdata)
+);
+
+endmodule

@@ -33,7 +33,7 @@ module slave #(
     output                          tx_clk,
     output                          tx_rst_n,
     output reg                      tx_wr_en,
-    output reg [DATA_WIDTH-1:0]     tx_data,
+    output reg [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_data,
 
     input                           rx_empty,
     output                          rx_clk,
