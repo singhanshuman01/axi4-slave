@@ -84,8 +84,8 @@ assign tx_rst_n = rst_n;
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) awready <= 1'b0;
     else begin
-        wr_en_waddr <= (awvalid && awready) ? 1'b1: 1'b0;
-        awready <= (awvalid && !full_waddr && !awready) ? 1'b1: 1'b0;
+        wr_en_waddr <= (awvalid & awready);
+        awready <= (awvalid & !full_waddr & !awready);
         wr_data_waddr <= {awburst, awaddr};
     end
 end
