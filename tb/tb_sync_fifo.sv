@@ -5,8 +5,8 @@ module tb_sync_fifo;
 localparam DATA_WIDTH = 32;
 localparam MEM_DEPTH = 16;
 
-logic [DATA_WIDTH-1:0] q [$:MEM_DEPTH-1];
-logic [DATA_WIDTH-1:0] element;
+logic [DATA_WIDTH-1:0] q [$];
+logic [DATA_WIDTH-1:0] element, item;
 
 logic clk;
 logic rst_n;
@@ -39,6 +39,8 @@ initial clk = 1'b0;
 always #5 clk = ~clk;
 
 initial begin
+    rd_en = 1'b0;
+    wr_en = 1'b0;
     rst_n = 1'b0;
     repeat(3) @(posedge clk);
     rst_n = 1'b1;
@@ -49,36 +51,55 @@ initial begin
 end
 
 task automatic push(input logic [DATA_WIDTH-1:0] wdata);
+    @(negedge clk);
+    wr_en = 1'b1;
+    wr_data = wdata;
 
-@(negedge clk);
-wr_en = 1'b1;
-wr_data = wdata;
-
-@(negedge clk);
-wr_en = 1'b0;
-
+    @(negedge clk);
+    wr_en = 1'b0;
 endtask
 
 task automatic pop();
+    @(negedge clk);
+    rd_en = 1'b1;
+    @(negedge clk);
+    rd_en = 1'b0;
+endtask
 
-@(negedge clk);
-rd_en = 1'b1;
-@(negedge clk);
-rd_en = 1'b0;
+task automatic burst_write(input int num, output logic [DATA_WIDTH-1:0] item);
 
+    repeat(num) begin
+        @(negedge clk);
+        wr_en = 1'b1;
+        item = $urandom();
+        wr_data = item;
+    end
+    @(posedge clk); #1;
+    wr_en = 1'b0;
+
+endtask
+
+task automatic burst_read(input int num);
+
+    repeat(num) begin
+        @(negedge clk);
+        rd_en = 1'b1;
+    end
+    @(posedge clk); #1;
+    rd_en = 1'b0;
 endtask
 
 task automatic check_empty(input logic expected);
-if(empty == expected) $write("PASS");
-else $write("ERROR");
-$display("\tEmpty is %b expected %b", empty, expected);
+    if(empty == expected) $write("PASS");
+    else $write("ERROR");
+    $display("\tEmpty is %b expected %b", empty, expected);
 endtask
 
 task automatic check_full(input logic expected);
-if(full==expected) $write("PASS");
-else $write("ERROR");
+    if(full==expected) $write("PASS");
+    else $write("ERROR");
 
-$display("\tFull is %b expected %b", full, expected);
+    $display("\tFull is %b expected %b", full, expected);
 endtask
 
 initial begin
@@ -133,6 +154,37 @@ initial begin
         else $display("ERROR: Expected = %h actual = %h", element, rd_data);
     end
     rd_en = 0;
+
+    repeat(5) @(posedge clk);
+    $display("TEST 7: burst read/write integrity");
+    repeat(50) begin 
+        fork
+            begin
+                @(negedge clk);
+                        
+                item = $urandom();
+                wr_en = 1'b1;
+                wr_data = item;
+                q.push_back(item);
+            end
+            begin
+                @(negedge clk);
+                @(negedge clk);
+                
+                rd_en = 1'b1;
+                @(posedge clk); #1;
+                element = rd_data;
+                if(element == q.pop_front()) $display("PASS:");
+                else $display("ERROR:");
+
+            end
+        join
+    end
+    wr_en = 1'b0;
+    @(posedge clk); #1;
+    rd_en = 1'b0;
+    @(posedge clk);
+    check_empty(1);
 
 
     #100 $finish;
