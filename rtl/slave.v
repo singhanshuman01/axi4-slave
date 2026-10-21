@@ -20,7 +20,7 @@ module slave #(
     input                           bready,
 
     input [ADDR_WIDTH-1:0]          araddr,
-    input [8:0]                     arburst,
+    input [7:0]                     arburst,
     input                           arvalid,
     output reg                      arready,
 
@@ -30,14 +30,10 @@ module slave #(
     input                           rready,
 
     input                           tx_full,
-    output                          tx_clk,
-    output                          tx_rst_n,
     output reg                      tx_wr_en,
     output reg [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_data,
 
     input                           rx_empty,
-    output                          rx_clk,
-    output                          rx_rst_n,
     output reg                      rx_rd_en,
     input [DATA_WIDTH-1:0]          rx_data
 );
@@ -51,8 +47,6 @@ always @(posedge clk) begin
     status[2] = tx_full;
     status[31:3] = 29'b0;
 end
-
-
 
 reg wr_en_waddr, rd_en_waddr;
 wire full_waddr, empty_waddr;
@@ -78,15 +72,19 @@ localparam IDLE = 2'b00,
 
 reg [1:0] state;
 
-assign tx_clk = clk;
-assign tx_rst_n = rst_n;
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) awready <= 1'b0;
     else begin
-        wr_en_waddr <= (awvalid & awready);
-        awready <= (awvalid & !full_waddr & !awready);
-        wr_data_waddr <= {awburst, awaddr};
+        wr_en_waddr <= 1'b0;
+        awready <= 1'b0;
+        if(awvalid && awready) begin
+            wr_en_waddr <= 1'b1;
+            wr_data_waddr <= {awburst, awaddr};
+        end
+        if(awvalid && !full_waddr) awready <= 1'b1;
+        // wr_en_waddr <= (awvalid & awready);
+        // awready <= (awvalid & !full_waddr & !awready);
     end
 end
 
@@ -113,7 +111,7 @@ always @(posedge clk or negedge rst_n) begin
                     rd_en_waddr <= 1'b0;
                 end
                 wready <= !tx_full;
-                if(burstcnt == 0) state <= RESP;
+                if(burstcnt == 0) state <= wvalid ? RESP: WRITE;
                 if(wvalid && wready) begin
                     if(wr_addr[1:0] != 2'b00) begin
                         resp_rg <= 2'b10;
@@ -170,17 +168,16 @@ localparam R_IDLE = 1'b0,
 
 reg r_state;
 
-assign rx_clk = rx_clk;
-assign rx_rst_n = rst_n;
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) arready <= 1'b0;
     else begin
         wr_data_raddr <= {arburst, araddr};
         arready <= 1'b0;
-        if(arvalid && !empty_raddr && !arready) arready <= 1'b1;
+        wr_en_raddr <= 1'b0;
+        if(arvalid && !full_raddr && !arready) arready <= 1'b1;
         if(arvalid && arready) begin
-            rd_en_raddr <= 1'b1;
+            wr_en_raddr <= 1'b1;
             arready <= 1'b0;
         end
     end
@@ -191,9 +188,9 @@ reg [ADDR_WIDTH-1:0] rd_addr;
 reg [1:0] rresp_rg;
 
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) state = R_IDLE;
+    if(!rst_n) r_state = R_IDLE;
     else begin
-        case(state)
+        case(r_state)
         R_IDLE: begin
             rvalid <= 1'b0;
             rx_rd_en <= 1'b0;
@@ -258,14 +255,13 @@ always @(posedge clk or negedge rst_n) begin
                                 state <= (r_burstcnt==0) ? R_IDLE: R_READ;
                                 if(r_burstcnt==0) begin
                                     rx_rd_en <= 1'b0;
-                                end
-                                else begin
+                                end else begin
                                     r_burstcnt <= r_burstcnt-1'b1;
                                 end
                             end
                         end else rvalid <= 1'b0;
                     end
-                    default: state <= R_IDLE;
+                    default:;
                     endcase
                 end
             end
