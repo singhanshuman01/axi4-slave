@@ -1,0 +1,267 @@
+$date
+	Wed Oct 21 22:17:29 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	100ps
+$end
+$scope module tb_slave $end
+$var wire 1 ! wready $end
+$var wire 1 " tx_wr_en $end
+$var wire 36 # tx_data [35:0] $end
+$var wire 1 $ rx_rd_en $end
+$var wire 1 % rvalid $end
+$var wire 2 & rresp [1:0] $end
+$var wire 32 ' rdata [31:0] $end
+$var wire 1 ( bvalid $end
+$var wire 2 ) bresp [1:0] $end
+$var wire 1 * awready $end
+$var wire 1 + arready $end
+$var parameter 32 , ADDR_WIDTH $end
+$var parameter 32 - DATA_WIDTH $end
+$var reg 32 . araddr [31:0] $end
+$var reg 8 / arburst [7:0] $end
+$var reg 1 0 arvalid $end
+$var reg 32 1 awaddr [31:0] $end
+$var reg 8 2 awburst [7:0] $end
+$var reg 1 3 awvalid $end
+$var reg 1 4 bready $end
+$var reg 1 5 clk $end
+$var reg 1 6 rready $end
+$var reg 1 7 rst_n $end
+$var reg 32 8 rx_data [31:0] $end
+$var reg 1 9 rx_empty $end
+$var reg 1 : tx_full $end
+$var reg 32 ; wdata [31:0] $end
+$var reg 4 < wstrb [3:0] $end
+$var reg 1 = wvalid $end
+$scope module slave_inst $end
+$var wire 32 > araddr [31:0] $end
+$var wire 8 ? arburst [7:0] $end
+$var wire 1 0 arvalid $end
+$var wire 32 @ awaddr [31:0] $end
+$var wire 8 A awburst [7:0] $end
+$var wire 1 3 awvalid $end
+$var wire 1 4 bready $end
+$var wire 1 5 clk $end
+$var wire 1 6 rready $end
+$var wire 1 7 rst_n $end
+$var wire 32 B rx_data [31:0] $end
+$var wire 1 9 rx_empty $end
+$var wire 1 : tx_full $end
+$var wire 32 C wdata [31:0] $end
+$var wire 4 D wstrb [3:0] $end
+$var wire 1 = wvalid $end
+$var wire 40 E rd_data_waddr [39:0] $end
+$var wire 40 F rd_data_raddr [39:0] $end
+$var wire 1 G full_waddr $end
+$var wire 1 H full_raddr $end
+$var wire 1 I empty_waddr $end
+$var wire 1 J empty_raddr $end
+$var parameter 32 K ADDR_WIDTH $end
+$var parameter 32 L DATA_WIDTH $end
+$var parameter 2 M IDLE $end
+$var parameter 2 N RESP $end
+$var parameter 1 O R_IDLE $end
+$var parameter 1 P R_READ $end
+$var parameter 2 Q WRITE $end
+$var reg 1 + arready $end
+$var reg 1 * awready $end
+$var reg 2 R bresp [1:0] $end
+$var reg 8 S burstcnt [7:0] $end
+$var reg 1 ( bvalid $end
+$var reg 32 T ctrl [31:0] $end
+$var reg 8 U r_burstcnt [7:0] $end
+$var reg 1 V r_state $end
+$var reg 32 W rd_addr [31:0] $end
+$var reg 1 X rd_en_raddr $end
+$var reg 1 Y rd_en_waddr $end
+$var reg 32 Z rdata [31:0] $end
+$var reg 2 [ resp_rg [1:0] $end
+$var reg 2 \ rresp [1:0] $end
+$var reg 1 % rvalid $end
+$var reg 1 $ rx_rd_en $end
+$var reg 2 ] state [1:0] $end
+$var reg 32 ^ status [31:0] $end
+$var reg 36 _ tx_data [35:0] $end
+$var reg 1 " tx_wr_en $end
+$var reg 32 ` wr_addr [31:0] $end
+$var reg 40 a wr_data_raddr [39:0] $end
+$var reg 40 b wr_data_waddr [39:0] $end
+$var reg 1 c wr_en_raddr $end
+$var reg 1 d wr_en_waddr $end
+$var reg 1 ! wready $end
+$scope module raddr_fifo $end
+$var wire 1 5 clk $end
+$var wire 1 H full $end
+$var wire 1 X rd_en $end
+$var wire 1 7 rst_n $end
+$var wire 40 e wr_data [39:0] $end
+$var wire 1 c wr_en $end
+$var wire 1 J empty $end
+$var parameter 33 f DATA_WIDTH $end
+$var parameter 32 g MEM_DEPTH $end
+$var parameter 32 h PTR_WIDTH $end
+$var reg 40 i rd_data [39:0] $end
+$var reg 5 j rptr [4:0] $end
+$var reg 5 k wptr [4:0] $end
+$upscope $end
+$scope module waddr_fifo $end
+$var wire 1 5 clk $end
+$var wire 1 G full $end
+$var wire 1 Y rd_en $end
+$var wire 1 7 rst_n $end
+$var wire 40 l wr_data [39:0] $end
+$var wire 1 d wr_en $end
+$var wire 1 I empty $end
+$var parameter 33 m DATA_WIDTH $end
+$var parameter 32 n MEM_DEPTH $end
+$var parameter 32 o PTR_WIDTH $end
+$var reg 40 p rd_data [39:0] $end
+$var reg 5 q rptr [4:0] $end
+$var reg 5 r wptr [4:0] $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+b100 o
+b10000 n
+b101000 m
+b100 h
+b10000 g
+b101000 f
+b1 Q
+1P
+0O
+b10 N
+b0 M
+b100000 L
+b100000 K
+b100000 -
+b100000 ,
+$end
+#0
+$dumpvars
+b0 r
+b0 q
+bx p
+bx l
+b0 k
+b0 j
+bx i
+bx e
+xd
+xc
+bx b
+bx a
+bx `
+bx _
+bx ^
+b0 ]
+bx \
+bx [
+bx Z
+xY
+xX
+bx W
+0V
+bx U
+bx T
+bx S
+bx R
+1J
+1I
+0H
+0G
+bx F
+bx E
+bx D
+bx C
+bx B
+bx A
+bx @
+bx ?
+bx >
+0=
+bx <
+bx ;
+0:
+09
+bx 8
+07
+06
+05
+04
+03
+bx 2
+bx 1
+00
+bx /
+bx .
+0+
+0*
+bx )
+x(
+bx '
+bx &
+x%
+x$
+bx #
+x"
+x!
+$end
+#50
+b10 ^
+15
+#100
+05
+#150
+15
+#200
+05
+#250
+15
+#300
+05
+#350
+0d
+0"
+0(
+0!
+0c
+0$
+0%
+17
+15
+#400
+05
+#450
+15
+#500
+05
+#550
+15
+#600
+05
+#650
+15
+#700
+05
+#750
+15
+#800
+05
+#850
+15
+#900
+05
+#950
+15
+#1000
+05
+#1050
+15
