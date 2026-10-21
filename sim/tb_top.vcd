@@ -1,0 +1,703 @@
+$date
+	Wed Oct 21 10:19:19 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module tb_top $end
+$var wire 1 ! wready $end
+$var wire 36 " tx_rd_data [35:0] $end
+$var wire 1 # tx_empty $end
+$var wire 1 $ rx_full $end
+$var wire 1 % rvalid $end
+$var wire 2 & rresp [1:0] $end
+$var wire 32 ' rdata [31:0] $end
+$var wire 1 ( bvalid $end
+$var wire 2 ) bresp [1:0] $end
+$var wire 1 * awready $end
+$var wire 1 + arready $end
+$var parameter 32 , ADDR_WIDTH $end
+$var parameter 32 - DATA_WIDTH $end
+$var parameter 32 . MEM_DEPTH $end
+$var reg 32 / araddr [31:0] $end
+$var reg 9 0 arburst [8:0] $end
+$var reg 1 1 arvalid $end
+$var reg 32 2 awaddr [31:0] $end
+$var reg 8 3 awburst [7:0] $end
+$var reg 1 4 awvalid $end
+$var reg 1 5 bready $end
+$var reg 1 6 clk $end
+$var reg 1 7 rready $end
+$var reg 1 8 rst_n $end
+$var reg 1 9 rx_wclk $end
+$var reg 32 : rx_wr_data [31:0] $end
+$var reg 1 ; rx_wr_en $end
+$var reg 1 < tx_rclk $end
+$var reg 1 = tx_rd_en $end
+$var reg 32 > wdata [31:0] $end
+$var reg 4 ? wstrb [3:0] $end
+$var reg 1 @ wvalid $end
+$scope module dut $end
+$var wire 32 A araddr [31:0] $end
+$var wire 9 B arburst [8:0] $end
+$var wire 1 1 arvalid $end
+$var wire 32 C awaddr [31:0] $end
+$var wire 8 D awburst [7:0] $end
+$var wire 1 4 awvalid $end
+$var wire 1 5 bready $end
+$var wire 1 6 clk $end
+$var wire 1 7 rready $end
+$var wire 1 8 rst_n $end
+$var wire 1 9 rx_wclk $end
+$var wire 32 E rx_wr_data [31:0] $end
+$var wire 1 ; rx_wr_en $end
+$var wire 1 < tx_rclk $end
+$var wire 1 = tx_rd_en $end
+$var wire 32 F wdata [31:0] $end
+$var wire 4 G wstrb [3:0] $end
+$var wire 1 @ wvalid $end
+$var wire 1 ! wready $end
+$var wire 1 H tx_wrst_n $end
+$var wire 1 I tx_wr_en $end
+$var wire 36 J tx_wdata [35:0] $end
+$var wire 1 K tx_wclk $end
+$var wire 36 L tx_rd_data [35:0] $end
+$var wire 1 M tx_full $end
+$var wire 1 # tx_empty $end
+$var wire 1 N rx_rrst_n $end
+$var wire 32 O rx_rdata [31:0] $end
+$var wire 1 P rx_rd_en $end
+$var wire 1 Q rx_rclk $end
+$var wire 1 $ rx_full $end
+$var wire 1 R rx_empty $end
+$var wire 1 % rvalid $end
+$var wire 2 S rresp [1:0] $end
+$var wire 32 T rdata [31:0] $end
+$var wire 1 ( bvalid $end
+$var wire 2 U bresp [1:0] $end
+$var wire 1 * awready $end
+$var wire 1 + arready $end
+$var parameter 32 V ADDR_WIDTH $end
+$var parameter 32 W DATA_WIDTH $end
+$var parameter 32 X MEM_DEPTH $end
+$scope module RX_FIFO $end
+$var wire 32 Y w_data [31:0] $end
+$var wire 1 9 wclk $end
+$var wire 1 ; write_en $end
+$var wire 1 N wrst_n $end
+$var wire 4 Z waddr [3:0] $end
+$var wire 5 [ sync_nxt_wptr_gray [4:0] $end
+$var wire 5 \ sync_nxt_rptr_gray [4:0] $end
+$var wire 1 N rrst_n $end
+$var wire 1 P read_en $end
+$var wire 1 Q rclk $end
+$var wire 4 ] raddr [3:0] $end
+$var wire 32 ^ r_data [31:0] $end
+$var wire 5 _ nxt_wptr_gray [4:0] $end
+$var wire 5 ` nxt_rptr_gray [4:0] $end
+$var wire 1 $ full $end
+$var wire 1 R empty $end
+$var parameter 32 a DATA_WIDTH $end
+$var parameter 32 b MEM_DEPTH $end
+$scope module handler_rptr_inst $end
+$var wire 5 c next_read_gray [4:0] $end
+$var wire 5 d sync_gray_wptr [4:0] $end
+$var wire 4 e read_addr [3:0] $end
+$var wire 5 f next_read_bin [4:0] $end
+$var wire 1 P en $end
+$var wire 1 g empty_r $end
+$var wire 1 Q clk $end
+$var wire 1 N arst_n $end
+$var parameter 32 h MEM_DEPTH $end
+$var reg 1 R empty $end
+$var reg 5 i local_read_addr_bin [4:0] $end
+$var reg 5 j rptr [4:0] $end
+$upscope $end
+$scope module handler_wptr_inst $end
+$var wire 1 9 clk $end
+$var wire 1 ; en $end
+$var wire 5 k next_write_addr_gray [4:0] $end
+$var wire 4 l write_addr [3:0] $end
+$var wire 5 m sync_gray_rptr [4:0] $end
+$var wire 1 N rst_n $end
+$var wire 5 n next_write_addr_bin [4:0] $end
+$var wire 1 o full_w $end
+$var parameter 32 p MEM_DEPTH $end
+$var reg 1 $ full $end
+$var reg 5 q local_write_addr [4:0] $end
+$var reg 5 r write_ptr [4:0] $end
+$upscope $end
+$scope module mem_inst $end
+$var wire 1 R empty $end
+$var wire 1 $ full $end
+$var wire 4 s read_addr [3:0] $end
+$var wire 1 9 wclk $end
+$var wire 1 ; wen $end
+$var wire 4 t write_addr [3:0] $end
+$var wire 32 u write_data [31:0] $end
+$var wire 1 P ren $end
+$var wire 1 Q rclk $end
+$var parameter 32 v DATA_WIDTH $end
+$var parameter 32 w MEM_DEPTH $end
+$var reg 32 x read_data [31:0] $end
+$upscope $end
+$scope module sync_rptr_inst $end
+$var wire 5 y rptr [4:0] $end
+$var wire 1 9 write_clk $end
+$var wire 1 N wrst_n $end
+$var parameter 32 z MEM_DEPTH $end
+$var reg 5 { sync_read_ptr [4:0] $end
+$var reg 5 | temp [4:0] $end
+$upscope $end
+$scope module sync_wptr_inst $end
+$var wire 5 } wptr [4:0] $end
+$var wire 1 N rrst_n $end
+$var wire 1 Q rclk $end
+$var parameter 32 ~ MEM_DEPTH $end
+$var reg 5 !" sync_write_ptr [4:0] $end
+$var reg 5 "" temp [4:0] $end
+$upscope $end
+$upscope $end
+$scope module TX_FIFO $end
+$var wire 1 < rclk $end
+$var wire 1 = read_en $end
+$var wire 1 H wrst_n $end
+$var wire 1 I write_en $end
+$var wire 1 K wclk $end
+$var wire 4 #" waddr [3:0] $end
+$var wire 36 $" w_data [35:0] $end
+$var wire 5 %" sync_nxt_wptr_gray [4:0] $end
+$var wire 5 &" sync_nxt_rptr_gray [4:0] $end
+$var wire 1 H rrst_n $end
+$var wire 4 '" raddr [3:0] $end
+$var wire 36 (" r_data [35:0] $end
+$var wire 5 )" nxt_wptr_gray [4:0] $end
+$var wire 5 *" nxt_rptr_gray [4:0] $end
+$var wire 1 M full $end
+$var wire 1 # empty $end
+$var parameter 34 +" DATA_WIDTH $end
+$var parameter 32 ," MEM_DEPTH $end
+$scope module handler_rptr_inst $end
+$var wire 1 < clk $end
+$var wire 1 = en $end
+$var wire 5 -" next_read_gray [4:0] $end
+$var wire 5 ." sync_gray_wptr [4:0] $end
+$var wire 4 /" read_addr [3:0] $end
+$var wire 5 0" next_read_bin [4:0] $end
+$var wire 1 1" empty_r $end
+$var wire 1 H arst_n $end
+$var parameter 32 2" MEM_DEPTH $end
+$var reg 1 # empty $end
+$var reg 5 3" local_read_addr_bin [4:0] $end
+$var reg 5 4" rptr [4:0] $end
+$upscope $end
+$scope module handler_wptr_inst $end
+$var wire 5 5" next_write_addr_gray [4:0] $end
+$var wire 4 6" write_addr [3:0] $end
+$var wire 5 7" sync_gray_rptr [4:0] $end
+$var wire 1 H rst_n $end
+$var wire 5 8" next_write_addr_bin [4:0] $end
+$var wire 1 9" full_w $end
+$var wire 1 I en $end
+$var wire 1 K clk $end
+$var parameter 32 :" MEM_DEPTH $end
+$var reg 1 M full $end
+$var reg 5 ;" local_write_addr [4:0] $end
+$var reg 5 <" write_ptr [4:0] $end
+$upscope $end
+$scope module mem_inst $end
+$var wire 1 # empty $end
+$var wire 1 M full $end
+$var wire 1 < rclk $end
+$var wire 4 =" read_addr [3:0] $end
+$var wire 1 = ren $end
+$var wire 4 >" write_addr [3:0] $end
+$var wire 36 ?" write_data [35:0] $end
+$var wire 1 I wen $end
+$var wire 1 K wclk $end
+$var parameter 34 @" DATA_WIDTH $end
+$var parameter 32 A" MEM_DEPTH $end
+$var reg 36 B" read_data [35:0] $end
+$upscope $end
+$scope module sync_rptr_inst $end
+$var wire 5 C" rptr [4:0] $end
+$var wire 1 H wrst_n $end
+$var wire 1 K write_clk $end
+$var parameter 32 D" MEM_DEPTH $end
+$var reg 5 E" sync_read_ptr [4:0] $end
+$var reg 5 F" temp [4:0] $end
+$upscope $end
+$scope module sync_wptr_inst $end
+$var wire 1 < rclk $end
+$var wire 5 G" wptr [4:0] $end
+$var wire 1 H rrst_n $end
+$var parameter 32 H" MEM_DEPTH $end
+$var reg 5 I" sync_write_ptr [4:0] $end
+$var reg 5 J" temp [4:0] $end
+$upscope $end
+$upscope $end
+$scope module axi4slave $end
+$var wire 32 K" araddr [31:0] $end
+$var wire 9 L" arburst [8:0] $end
+$var wire 1 1 arvalid $end
+$var wire 32 M" awaddr [31:0] $end
+$var wire 8 N" awburst [7:0] $end
+$var wire 1 4 awvalid $end
+$var wire 1 5 bready $end
+$var wire 1 6 clk $end
+$var wire 1 7 rready $end
+$var wire 1 8 rst_n $end
+$var wire 1 Q rx_clk $end
+$var wire 32 O" rx_data [31:0] $end
+$var wire 1 R rx_empty $end
+$var wire 1 N rx_rst_n $end
+$var wire 1 K tx_clk $end
+$var wire 1 M tx_full $end
+$var wire 1 H tx_rst_n $end
+$var wire 32 P" wdata [31:0] $end
+$var wire 4 Q" wstrb [3:0] $end
+$var wire 1 @ wvalid $end
+$var wire 40 R" rd_data_waddr [39:0] $end
+$var wire 40 S" rd_data_raddr [39:0] $end
+$var wire 1 T" full_waddr $end
+$var wire 1 U" full_raddr $end
+$var wire 1 V" empty_waddr $end
+$var wire 1 W" empty_raddr $end
+$var parameter 32 X" ADDR_WIDTH $end
+$var parameter 32 Y" DATA_WIDTH $end
+$var parameter 2 Z" IDLE $end
+$var parameter 2 [" RESP $end
+$var parameter 1 \" R_IDLE $end
+$var parameter 1 ]" R_READ $end
+$var parameter 2 ^" WRITE $end
+$var reg 1 + arready $end
+$var reg 1 * awready $end
+$var reg 2 _" bresp [1:0] $end
+$var reg 8 `" burstcnt [7:0] $end
+$var reg 1 ( bvalid $end
+$var reg 32 a" ctrl [31:0] $end
+$var reg 8 b" r_burstcnt [7:0] $end
+$var reg 32 c" rd_addr [31:0] $end
+$var reg 1 d" rd_en_raddr $end
+$var reg 1 e" rd_en_waddr $end
+$var reg 32 f" rdata [31:0] $end
+$var reg 2 g" resp_rg [1:0] $end
+$var reg 2 h" rresp [1:0] $end
+$var reg 1 % rvalid $end
+$var reg 1 P rx_rd_en $end
+$var reg 2 i" state [1:0] $end
+$var reg 32 j" status [31:0] $end
+$var reg 36 k" tx_data [35:0] $end
+$var reg 1 I tx_wr_en $end
+$var reg 32 l" wr_addr [31:0] $end
+$var reg 40 m" wr_data_raddr [39:0] $end
+$var reg 40 n" wr_data_waddr [39:0] $end
+$var reg 1 o" wr_en_raddr $end
+$var reg 1 p" wr_en_waddr $end
+$var reg 1 ! wready $end
+$scope module raddr_fifo $end
+$var wire 1 6 clk $end
+$var wire 1 U" full $end
+$var wire 1 d" rd_en $end
+$var wire 1 8 rst_n $end
+$var wire 40 q" wr_data [39:0] $end
+$var wire 1 o" wr_en $end
+$var wire 1 W" empty $end
+$var parameter 33 r" DATA_WIDTH $end
+$var parameter 32 s" MEM_DEPTH $end
+$var parameter 32 t" PTR_WIDTH $end
+$var reg 40 u" rd_data [39:0] $end
+$var reg 5 v" rptr [4:0] $end
+$var reg 5 w" wptr [4:0] $end
+$upscope $end
+$scope module waddr_fifo $end
+$var wire 1 6 clk $end
+$var wire 1 T" full $end
+$var wire 1 e" rd_en $end
+$var wire 1 8 rst_n $end
+$var wire 40 x" wr_data [39:0] $end
+$var wire 1 p" wr_en $end
+$var wire 1 V" empty $end
+$var parameter 33 y" DATA_WIDTH $end
+$var parameter 32 z" MEM_DEPTH $end
+$var parameter 32 {" PTR_WIDTH $end
+$var reg 40 |" rd_data [39:0] $end
+$var reg 5 }" rptr [4:0] $end
+$var reg 5 ~" wptr [4:0] $end
+$upscope $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+b100 {"
+b10000 z"
+b101000 y"
+b100 t"
+b10000 s"
+b101000 r"
+b1 ^"
+1]"
+0\"
+b10 ["
+b0 Z"
+b100000 Y"
+b100000 X"
+b10000 H"
+b10000 D"
+b10000 A"
+b100100 @"
+b10000 :"
+b10000 2"
+b10000 ,"
+b100100 +"
+b10000 ~
+b10000 z
+b10000 w
+b100000 v
+b10000 p
+b10000 h
+b10000 b
+b100000 a
+b10000 X
+b100000 W
+b100000 V
+b10000 .
+b100000 -
+b100000 ,
+$end
+#0
+$dumpvars
+b0 ~"
+b0 }"
+bx |"
+bx x"
+b0 w"
+b0 v"
+bx u"
+bx q"
+xp"
+xo"
+bx n"
+bx m"
+bx l"
+bx k"
+bx j"
+b0 i"
+bx h"
+bx g"
+bx f"
+xe"
+xd"
+bx c"
+bx b"
+bx a"
+bx `"
+bx _"
+1W"
+1V"
+0U"
+0T"
+bx S"
+bx R"
+b0 Q"
+b0 P"
+bx O"
+b0 N"
+b0 M"
+b0 L"
+b0 K"
+b0 J"
+b0 I"
+b0 G"
+b0 F"
+b0 E"
+b0 C"
+bx B"
+bx ?"
+b0 >"
+b0 ="
+b0 <"
+b0 ;"
+x9"
+bx 8"
+b0 7"
+b0 6"
+bx 5"
+b0 4"
+b0 3"
+11"
+b0 0"
+b0 /"
+b0 ."
+b0 -"
+b0 *"
+b0 )"
+bx ("
+b0 '"
+b0 &"
+b0 %"
+bx $"
+b0 #"
+b0 ""
+b0 !"
+b0 }
+b0 |
+b0 {
+b0 y
+bx x
+b0 u
+b0 t
+b0 s
+b0 r
+b0 q
+0o
+b0 n
+b0 m
+b0 l
+b0 k
+b0 j
+b0 i
+1g
+b0 f
+b0 e
+b0 d
+b0 c
+b0 `
+b0 _
+bx ^
+b0 ]
+b0 \
+b0 [
+b0 Z
+b0 Y
+bx U
+bx T
+bx S
+1R
+zQ
+xP
+bx O
+0N
+0M
+bx L
+0K
+bx J
+xI
+0H
+b0 G
+b0 F
+b0 E
+b0 D
+b0 C
+b0 B
+b0 A
+0@
+b0 ?
+b0 >
+0=
+0<
+0;
+b0 :
+09
+08
+07
+06
+05
+04
+b0 3
+b0 2
+01
+b0 0
+b0 /
+0+
+0*
+bx )
+x(
+bx '
+bx &
+x%
+0$
+1#
+bx "
+x!
+$end
+#5000
+b0 j"
+1K
+16
+#7000
+1<
+#10000
+0K
+06
+#11000
+19
+#14000
+0<
+#15000
+1K
+16
+#20000
+0K
+06
+#21000
+1<
+#22000
+09
+#25000
+1K
+16
+#28000
+0<
+#30000
+0K
+06
+#33000
+19
+#35000
+1K
+16
+1<
+#40000
+0K
+06
+#42000
+0<
+#44000
+09
+#45000
+1K
+16
+#49000
+1<
+#50000
+1H
+1N
+18
+0K
+06
+#55000
+bx #"
+bx 6"
+bx >"
+bx ;"
+bx )"
+bx <"
+bx G"
+xM
+b0 n"
+b0 x"
+0p"
+0I
+0(
+0!
+b0 m"
+b0 q"
+0P
+0%
+1K
+16
+19
+#56000
+0<
+#60000
+0K
+06
+#63000
+bx J"
+1<
+#65000
+b0x00 j"
+1K
+16
+#66000
+09
+#70000
+0K
+06
+0<
+#75000
+1K
+16
+#77000
+x1"
+bx %"
+bx ."
+bx I"
+1<
+19
+#80000
+0K
+06
+#84000
+0<
+#85000
+1K
+16
+#88000
+09
+#90000
+0K
+06
+#91000
+x#
+1<
+#95000
+1K
+16
+#98000
+0<
+#99000
+19
+#100000
+0K
+06
+#105000
+1K
+16
+1<
+#110000
+0K
+06
+09
+#112000
+0<
+#115000
+1K
+16
+#119000
+1<
+#120000
+0K
+06
+#121000
+19
+#125000
+1K
+16
+#126000
+0<
+#130000
+0K
+06
+#132000
+09
+#133000
+1<
+#135000
+1K
+16
+#140000
+0K
+06
+0<
+#143000
+19
+#145000
+1K
+16
