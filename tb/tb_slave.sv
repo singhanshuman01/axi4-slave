@@ -38,8 +38,8 @@ logic [DATA_WIDTH-1:0] rx_data;
 
 
 // queue to simulate fifo
-logic [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_fifo[$];
-logic [DATA_WIDTH-1:0] rx_fifo[$];
+logic [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_fifo[$:15];
+logic [DATA_WIDTH-1:0] rx_fifo[$:15];
 
 
 slave #(
@@ -86,6 +86,9 @@ slave #(
 initial clk = 0;
 always #5 clk = ~clk;
 
+// assign rx_empty = (rx_fifo.size()==0);
+// assign tx_full = (tx_fifo.size()==16);
+
 initial begin
     rst_n = 1'b0;
     awvalid = 1'b0;
@@ -93,8 +96,8 @@ initial begin
     bready = 1'b0;
     arvalid = 1'b0;
     rready = 1'b0;
-    tx_full = 1'b0;
-    rx_empty = 1'b0;
+    rx_empty = (rx_fifo.size()==0);
+    tx_full = (tx_fifo.size()==16);
     repeat(4) @(posedge clk);
     rst_n = 1'b1;
 end
@@ -104,9 +107,101 @@ initial begin
     #20000 $fatal(1, "Time limit exceeded");
 end
 
+task automatic write_addr(  input logic [ADDR_WIDTH-1:0] addr,
+                            input logic [7:0] burst);
+    @(negedge clk);
+    awaddr = addr;
+    awburst = burst;
+    awvalid = 1'b1;
+    wait(awready);
+    @(posedge clk);
+    awvalid = 1'b0;
+
+    $display("WRITE ADDRESS handshake completed, ADDR=%h BURST=%0d", addr, burst);
+endtask
+
+task automatic write_data(  input logic [DATA_WIDTH-1:0] data,
+                            input logic [$clog2(DATA_WIDTH)-2:0] strobe);
+    @(negedge clk);
+    wdata = data;
+    wvalid = 1'b1;
+    wstrb = strobe;
+    wait(wready);
+    @(posedge clk);
+    @(posedge clk);
+    wvalid = 1'b0;
+
+    $display("WRITE DATA handshake complete, DATA=%h STROBE=%b", data, strobe);
+endtask
+
+task automatic take_resp();
+    @(negedge clk);
+    bready = 1'b1;
+    wait(bvalid);
+    @(posedge clk);
+    @(posedge clk);
+    bready = 1'b0;
+
+    $display("RESPONSE recieved, BRESP=%b", bresp);
+endtask
+
+task automatic read_addr(  input logic [ADDR_WIDTH-1:0] addr,
+                            input logic [7:0] burst);
+    @(negedge clk);
+    arvalid = 1'b1;
+    araddr = addr;
+    arburst = burst;
+    wait(arready);
+    @(posedge clk);
+    arvalid = 1'b0;
+
+    $display("READ ADDR handshake completed, ADDR=%h BURST=%d", addr, burst);
+endtask
+
+task automatic read_data();
+    @(negedge clk);
+    rready = 1'b1;
+    wait(rvalid);
+    @(posedge clk);
+    rready = 1'b0;
+
+    $display("RECIEVED READ DATA successfully, DATA=%h RESP=%b", rdata, rresp);
+endtask
+
+
+
 initial begin
     repeat(10) @(posedge clk);
 
+    $display("HAHAHAHA😈");
+    write_addr(32'h0000_0004, 8'h00);
+    write_data(32'hDEAF_FACE, 4'hF);
+    take_resp();
+
+    repeat(5) @(posedge clk);
+    
+    write_addr(32'h0000_0000, 8'h00);
+    write_data(32'h0000_0010, 4'hF);
+    take_resp();
+
+    repeat(5) @(posedge clk);
+
+    read_addr(32'h0000_0004, 8'h00);
+    read_data();
+
+
+    repeat(5) @(posedge clk);
+    
+    write_addr(32'h0000_0000, 8'h00);
+    write_data(32'hCAFE_501A, 4'hF);
+    take_resp();
+
+    repeat(5) @(posedge clk);
+
+    read_addr(32'h0000_0000, 8'h00);
+    read_data();
+    
+    repeat(5) @(posedge clk);
     #10 $finish;
 end
 
