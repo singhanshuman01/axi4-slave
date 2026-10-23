@@ -109,64 +109,72 @@ end
 
 task automatic write_addr(  input logic [ADDR_WIDTH-1:0] addr,
                             input logic [7:0] burst);
-    @(negedge clk);
-    awaddr = addr;
-    awburst = burst;
-    awvalid = 1'b1;
+    @(posedge clk);
+    awaddr <= addr;
+    awburst <= burst;
+    awvalid <= 1'b1;
     wait(awready);
     @(posedge clk);
-    awvalid = 1'b0;
+    awvalid <= 1'b0;
 
     $display("WRITE ADDRESS handshake completed, ADDR=%h BURST=%0d", addr, burst);
 endtask
 
 task automatic write_data(  input logic [DATA_WIDTH-1:0] data,
                             input logic [$clog2(DATA_WIDTH)-2:0] strobe);
-    @(negedge clk);
-    wdata = data;
-    wvalid = 1'b1;
-    wstrb = strobe;
+    @(posedge clk);
+    wdata <= data;
+    wvalid <= 1'b1;
+    wstrb <= strobe;
     wait(wready);
     @(posedge clk);
-    @(posedge clk);
-    wvalid = 1'b0;
+    // @(posedge clk);
+    wvalid <= 1'b0;
 
     $display("WRITE DATA handshake complete, DATA=%h STROBE=%b", data, strobe);
 endtask
 
 task automatic take_resp();
-    @(negedge clk);
-    bready = 1'b1;
+    @(posedge clk);
+    bready <= 1'b1;
     wait(bvalid);
     @(posedge clk);
-    @(posedge clk);
-    bready = 1'b0;
+    // @(posedge clk);
+    bready <= 1'b0;
 
     $display("RESPONSE recieved, BRESP=%b", bresp);
 endtask
 
 task automatic read_addr(  input logic [ADDR_WIDTH-1:0] addr,
                             input logic [7:0] burst);
-    @(negedge clk);
-    arvalid = 1'b1;
-    araddr = addr;
-    arburst = burst;
+    @(posedge clk);
+    arvalid <= 1'b1;
+    araddr <= addr;
+    arburst <= burst;
     wait(arready);
     @(posedge clk);
-    arvalid = 1'b0;
+    arvalid <= 1'b0;
 
     $display("READ ADDR handshake completed, ADDR=%h BURST=%d", addr, burst);
 endtask
 
 task automatic read_data();
     @(negedge clk);
-    rready = 1'b1;
+    rready <= 1'b1;
     wait(rvalid);
     @(posedge clk);
-    rready = 1'b0;
+    rready <= 1'b0;
 
     $display("RECIEVED READ DATA successfully, DATA=%h RESP=%b", rdata, rresp);
 endtask
+
+always @(posedge clk) begin
+    if(tx_wr_en && tx_fifo.size()!=16) tx_fifo.push_back(tx_data);
+end
+
+always @(posedge clk) begin
+    if(rx_rd_en && rx_fifo.size()!=0) rx_data = rx_fifo.pop_front();
+end
 
 
 
@@ -186,9 +194,13 @@ initial begin
 
     repeat(5) @(posedge clk);
 
-    read_addr(32'h0000_0004, 8'h00);
+    read_addr(32'h0000_0008, 8'h00);
     read_data();
 
+    repeat(5) @(posedge clk);
+
+    read_addr(32'h0000_0000, 8'h00);
+    read_data();
 
     repeat(5) @(posedge clk);
     
@@ -200,7 +212,7 @@ initial begin
 
     read_addr(32'h0000_0000, 8'h00);
     read_data();
-    
+
     repeat(5) @(posedge clk);
     #10 $finish;
 end
