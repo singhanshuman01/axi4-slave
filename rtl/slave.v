@@ -116,7 +116,7 @@ always @(posedge clk or negedge rst_n) begin
                 if(rd_en_waddr) begin
                     rd_en_waddr <= 1'b0;
                 end
-                wready <= 1'b1;
+                wready <= wvalid;
                 if(wvalid && wready) begin
                     // if(burstcnt == 0) state <= RESP;
                     if(wr_addr[1:0] != 2'b00) begin
