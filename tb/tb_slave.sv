@@ -86,8 +86,6 @@ slave #(
 initial clk = 0;
 always #5 clk = ~clk;
 
-// assign rx_empty = (rx_fifo.size()==0);
-// assign tx_full = (tx_fifo.size()==16);
 
 initial begin
     rst_n = 1'b0;
@@ -128,7 +126,6 @@ task automatic write_data(  input logic [DATA_WIDTH-1:0] data,
     wstrb <= strobe;
     wait(wready);
     @(posedge clk);
-    // @(posedge clk);
     wvalid <= 1'b0;
 
     $display("WRITE DATA handshake complete, DATA=%h STROBE=%b", data, strobe);
@@ -177,7 +174,6 @@ always @(posedge clk) begin
 end
 
 
-
 initial begin
     repeat(10) @(posedge clk);
 
@@ -212,6 +208,28 @@ initial begin
 
     read_addr(32'h0000_0000, 8'h00);
     read_data();
+
+    repeat(5) @(posedge clk);
+    write_addr(32'h0000_0008, 8'd5);
+    wdata <= $urandom();
+    wvalid <= 1'b1;
+    wstrb <=4'hf;
+    wait(wready);
+    repeat(5) begin
+        @(posedge clk);
+        wdata <= $urandom;
+        $display("Writing data=%h", wdata);
+    end
+    @(posedge clk);
+    $display("Writing data=%h", wdata);
+    wvalid <= 1'b0;
+    take_resp();
+    while(tx_fifo.size != 0) begin
+        $display("front=%h", tx_fifo.pop_front());
+    end
+
+    repeat(5) @(posedge clk);
+    
 
     repeat(5) @(posedge clk);
     #10 $finish;
