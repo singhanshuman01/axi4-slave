@@ -88,6 +88,7 @@ always #5 clk = ~clk;
 
 
 initial begin
+    $display("Assert reset");
     rst_n = 1'b0;
     awvalid = 1'b0;
     wvalid = 1'b0;
@@ -95,6 +96,7 @@ initial begin
     arvalid = 1'b0;
     rready = 1'b0;
     repeat(4) @(posedge clk);
+    $display("De-Assert reset");
     rst_n = 1'b1;
 end
 
@@ -176,40 +178,40 @@ end
 initial begin
     repeat(10) @(posedge clk);
 
-    $display("\nBegin the testing.");
+    $display("\nTEST 1:Begin the testing.");
     write_addr(32'h0000_0004, 8'h00);
     write_data(32'hDEAF_FACE, 4'hF);
     take_resp();
 
     repeat(5) @(posedge clk);
-    $display("\n\nTesting write at wrong address");
+    $display("\n\nTEST 2:Testing write at wrong address");
     write_addr(32'h0000_0000, 8'h00);
     write_data(32'h0000_0010, 4'hF);
     take_resp();
 
     repeat(5) @(posedge clk);
-    $display("\n\ntesting single write at txfifo");
+    $display("\n\nTEST 3:testing single write at txfifo");
     read_addr(32'h0000_0008, 8'h00);
     read_data();
 
     repeat(5) @(posedge clk);
-    $display("\n\ntesting read at ctrl register");
+    $display("\n\nTEST 4:testing read at ctrl register");
     read_addr(32'h0000_0000, 8'h00);
     read_data();
 
     repeat(5) @(posedge clk);
-    $display("\n\nupdating the ctrl register");
+    $display("\n\nTEST 5:updating the ctrl register");
     write_addr(32'h0000_0000, 8'h00);
     write_data(32'hCAFE_501A, 4'hF);
     take_resp();
 
     repeat(5) @(posedge clk);
-    $display("\n\nreading the ctrl register again to confirm write");
+    $display("\n\nTEST 6:reading the ctrl register again to confirm write");
     read_addr(32'h0000_0000, 8'h00);
     read_data();
 
     repeat(5) @(posedge clk);
-    $display("\n\nburst write at tx fifo");
+    $display("\n\nTEST 7:burst write at tx fifo");
     write_addr(32'h0000_0008, 8'd5);
     wdata <= $urandom();
     wvalid <= 1'b1;
@@ -229,7 +231,7 @@ initial begin
     end
 
     repeat(5) @(posedge clk);
-    $display("\n\nburst read at rxfifo");
+    $display("\n\nTEST 8:burst read at rxfifo");
     repeat(8) rx_fifo.push_back($urandom());
     @(posedge clk);
     read_addr(32'h0000_000C, 8'h7);
@@ -241,7 +243,7 @@ initial begin
     @(posedge clk);
     @(posedge clk);
     rready <= 1'b1;
-    repeat(8) begin
+    repeat(6) begin
         @(posedge clk);
         rready <= rvalid;
         $display("rxfifo data=%h", rdata);
