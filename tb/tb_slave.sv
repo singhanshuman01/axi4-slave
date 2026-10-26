@@ -223,11 +223,24 @@ initial begin
     wvalid <= 1'b1;
     wstrb <=4'hf;
     wait(wready);
-    repeat(5) begin
+    repeat(3) begin
         @(posedge clk);
         wdata <= $urandom;
         $display("Writing data=%h", wdata);
     end
+    @(posedge clk);
+    wvalid <= 1'b0;
+    repeat(2) @(posedge clk);
+    wvalid <= 1'b1;
+    // @(posedge clk);
+    wdata <= $urandom();
+    wait(wready);
+    @(posedge clk);
+    wvalid <= 1'b0;
+    @(posedge clk);
+    wvalid <= 1'b1;
+    wdata <= $urandom();
+    wait(wready);
     @(posedge clk);
     $display("Writing data=%h", wdata);
     wvalid <= 1'b0;
