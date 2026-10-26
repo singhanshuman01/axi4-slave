@@ -44,6 +44,8 @@ The module exposes the main AXI write/read interface and the external FIFO signa
 ### 2. `rtl/slave.v`
 This is the main functional block of the design.
 
+![Diagram](docs/slave.jpg "Diagram")
+
 It contains:
 - write-channel state machine
 - read-channel state machine
@@ -58,6 +60,8 @@ The slave supports a simplified AXI-style transaction flow and maps memory acces
 
 ### 3. `rtl/sync_fifo.v`
 This is a single-clock synchronous FIFO used internally to store queued address metadata related to burst accesses.
+
+![Diagram](docs/sync_fifo.jpg "Diagram")
 
 It is used for:
 - write address buffering
@@ -100,6 +104,8 @@ This makes the status word a simple summary of:
 
 ### Write Channel
 
+![Diagram](docs/fsm_slave_00.jpg "Diagram")
+
 Write accesses are queued using a FIFO of address+burst metadata. The slave decodes the destination address and performs the corresponding action:
 
 - address group `00`: write to `ctrl`
@@ -115,6 +121,8 @@ The TX payload is generated as:
 This indicates that the transmitted word includes a write-byte-enable mask together with the payload data.
 
 ### Read Channel
+
+![Diagram](docs/fsm_slave_11.jpg "Diagram")
 
 Read accesses are also queued and decoded in a similar fashion:
 
