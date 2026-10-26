@@ -4,11 +4,15 @@ module async_fifo #(
 )
 (
     output [DATA_WIDTH-1:0] r_data,
-    output                  empty, full,
+    output                  empty,
+    output                  full,
     input [DATA_WIDTH-1:0]  w_data,
-    input                   rclk, wclk,
-    input                   rrst_n, wrst_n,
-    input                   write_en, read_en
+    input                   rclk,
+    input                   rrst_n,
+    input                   read_en,
+    input                   wclk,
+    input                   wrst_n,
+    input                   write_en
 );
 
 wire [4:0] nxt_wptr_gray, nxt_rptr_gray;

@@ -72,6 +72,8 @@ The FIFO uses standard pointer-based full/empty detection for a single clock dom
 ### 4. `rtl/async_fifo.v`
 This is a dual-clock asynchronous FIFO used to bridge between different clock domains.
 
+![Diagram](docs/async_fifo.jpg "Diagram")
+
 It contains:
 - memory storage
 - read and write pointer handlers
