@@ -32,13 +32,11 @@ module top #(
 
     output                          tx_empty,
     input                           tx_rclk,
-    // input                           tx_rrst_n,
     input                           tx_rd_en,
     output [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_rd_data,
 
     output                          rx_full,
     input                           rx_wclk,
-    // input                           rx_wrst_n,
     input                           rx_wr_en,
     input [DATA_WIDTH-1:0]          rx_wr_data
 );
