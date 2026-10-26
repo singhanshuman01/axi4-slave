@@ -98,8 +98,14 @@ reg [ADDR_WIDTH-1:0] wr_addr;
 reg [1:0] resp_rg;
 
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) state = IDLE;
-    else begin
+    if(!rst_n) begin
+        wready <= 1'b0;
+        bvalid <= 1'b0;
+        bresp <= 2'b0;
+        tx_wr_en <= 1'b0;
+        tx_data <= 0;
+        state = IDLE;
+    end else begin
         case (state)
             IDLE: begin
                 wready <= 1'b0;
@@ -216,7 +222,13 @@ reg [ADDR_WIDTH-1:0] rd_addr;
 reg [1:0] rresp_rg;
 
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) r_state = R_IDLE;
+    if(!rst_n) begin
+        rvalid <= 1'b0;
+        rdata <= 0;
+        rresp <= 2'b0;
+        rx_rd_en <= 1'b0;
+        r_state <= R_IDLE;
+    end
     else begin
         case(r_state)
         R_IDLE: begin
