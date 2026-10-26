@@ -1,5 +1,5 @@
 $date
-	Mon Oct 26 11:22:56 2026
+	Mon Oct 26 14:30:22 2026
 $end
 $version
 	Icarus Verilog
@@ -158,19 +158,19 @@ $end
 $dumpvars
 b0 r
 b0 q
-bx m
+b0 m
 bx l
 b0 k
 b0 j
-bx f
+b0 f
 bx e
 bx d
-bx c
+b0 c
 bx b
 b0 a
-bx `
+b0 `
 bx _
-bx ^
+b0 ^
 x]
 x\
 bx [
@@ -178,27 +178,27 @@ bx [
 bx Y
 bx X
 bx W
-bx V
+b0 V
 1N
 1M
 0L
 0K
 bx J
 bx I
-bx H
-bx G
-bx F
+b0 H
+b0 G
+b0 F
 0E
 0D
-bx C
+b0 C
 bx B
-bx A
-bx @
-bx ?
-bx >
+b0 A
+b0 @
+b0 ?
+b0 >
 0=
-bx <
-bx ;
+b0 <
+b0 ;
 x:
 x9
 bx 8
@@ -207,22 +207,22 @@ bx 8
 05
 04
 03
-bx 2
-bx 1
+b0 2
+b0 1
 00
-bx /
-bx .
+b0 /
+b0 .
 0+
 0*
-bx )
-x(
-bx '
-bx &
-x%
-x$
-bx #
-x"
-x!
+b0 )
+0(
+b0 '
+b0 &
+0%
+0$
+b0 #
+0"
+0!
 $end
 #50
 0:
@@ -241,12 +241,7 @@ b0 b
 #300
 05
 #350
-0"
-0(
-0!
 0\
-0$
-0%
 17
 15
 #400
@@ -277,8 +272,6 @@ b0 b
 05
 #1050
 13
-b0 2
-b0 A
 b100 G
 b100 m
 b100 1
@@ -460,8 +453,6 @@ b0 a
 #3600
 05
 #3650
-b0 /
-b0 ?
 b1000 H
 b1000 f
 b1000 .
@@ -510,8 +501,6 @@ b1 j
 1%
 b10 &
 b10 `
-b0 '
-b0 ^
 15
 #4200
 05

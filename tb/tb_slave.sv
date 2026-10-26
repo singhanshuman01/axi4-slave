@@ -95,6 +95,12 @@ initial begin
     bready = 1'b0;
     arvalid = 1'b0;
     rready = 1'b0;
+    araddr = 0;
+    arburst = 0;
+    awaddr = 0;
+    awburst = 0;
+    wdata = 0;
+    wstrb = 0;
     repeat(4) @(posedge clk);
     $display("De-Assert reset");
     rst_n = 1'b1;
