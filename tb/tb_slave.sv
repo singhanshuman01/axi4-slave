@@ -94,8 +94,6 @@ initial begin
     bready = 1'b0;
     arvalid = 1'b0;
     rready = 1'b0;
-    rx_empty = (rx_fifo.size()==0);
-    tx_full = (tx_fifo.size()==16);
     repeat(4) @(posedge clk);
     rst_n = 1'b1;
 end
@@ -167,49 +165,51 @@ endtask
 
 always @(posedge clk) begin
     if(tx_wr_en && tx_fifo.size()!=16) tx_fifo.push_back(tx_data);
+    if(rx_rd_en && rx_fifo.size()!=0) rx_data = rx_fifo.pop_front();
+
+    rx_empty <= (rx_fifo.size()==0);
+    tx_full <= (tx_fifo.size()==16);
 end
 
-always @(posedge clk) begin
-    if(rx_rd_en && rx_fifo.size()!=0) rx_data = rx_fifo.pop_front();
-end
 
 
 initial begin
     repeat(10) @(posedge clk);
 
-    $display("HAHAHAHA😈");
+    $display("\nBegin the testing.");
     write_addr(32'h0000_0004, 8'h00);
     write_data(32'hDEAF_FACE, 4'hF);
     take_resp();
 
     repeat(5) @(posedge clk);
-    
+    $display("\n\nTesting write at wrong address");
     write_addr(32'h0000_0000, 8'h00);
     write_data(32'h0000_0010, 4'hF);
     take_resp();
 
     repeat(5) @(posedge clk);
-
+    $display("\n\ntesting single write at txfifo");
     read_addr(32'h0000_0008, 8'h00);
     read_data();
 
     repeat(5) @(posedge clk);
-
+    $display("\n\ntesting read at ctrl register");
     read_addr(32'h0000_0000, 8'h00);
     read_data();
 
     repeat(5) @(posedge clk);
-    
+    $display("\n\nupdating the ctrl register");
     write_addr(32'h0000_0000, 8'h00);
     write_data(32'hCAFE_501A, 4'hF);
     take_resp();
 
     repeat(5) @(posedge clk);
-
+    $display("\n\nreading the ctrl register again to confirm write");
     read_addr(32'h0000_0000, 8'h00);
     read_data();
 
     repeat(5) @(posedge clk);
+    $display("\n\nburst write at tx fifo");
     write_addr(32'h0000_0008, 8'd5);
     wdata <= $urandom();
     wvalid <= 1'b1;
@@ -229,7 +229,24 @@ initial begin
     end
 
     repeat(5) @(posedge clk);
-    
+    $display("\n\nburst read at rxfifo");
+    repeat(8) rx_fifo.push_back($urandom());
+    @(posedge clk);
+    read_addr(32'h0000_000C, 8'h7);
+    wait(rvalid);
+    @(posedge clk);
+    rready <= 1'b1;
+    repeat(3) @(posedge clk);
+    rready <= 1'b0;
+    @(posedge clk);
+    @(posedge clk);
+    rready <= 1'b1;
+    repeat(8) begin
+        @(posedge clk);
+        rready <= rvalid;
+        $display("rxfifo data=%h", rdata);
+    end
+    rready <= 1'b0;
 
     repeat(5) @(posedge clk);
     #10 $finish;

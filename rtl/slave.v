@@ -273,13 +273,14 @@ always @(posedge clk or negedge rst_n) begin
                             r_burstcnt <= r_burstcnt-1'b1;
                         end
                     end
-                    2'b11: begin
+                    2'b11: begin 
                         if(!rx_empty) begin
                             rx_rd_en <= 1'b1;
+                            rdata <= rx_data;
                             if(rx_rd_en) begin                                
-                                rdata <= rx_data;
                                 rresp <= 2'b00;
                                 rvalid <= 1'b1;
+                                rx_rd_en <= rvalid&rready;
                                 r_state <= (r_burstcnt==0) ? R_IDLE: R_READ;
                                 if(r_burstcnt==0) begin
                                     rx_rd_en <= 1'b0;
@@ -292,6 +293,8 @@ always @(posedge clk or negedge rst_n) begin
                     default:;
                     endcase
                 end
+            end else begin
+                rx_rd_en <= 1'b0;
             end
         end
         default: r_state <= R_IDLE;
