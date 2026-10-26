@@ -1,5 +1,5 @@
 $date
-	Mon Oct 26 14:49:56 2026
+	Mon Oct 26 15:04:04 2026
 $end
 $version
 	Icarus Verilog
@@ -164,20 +164,20 @@ b0 k
 b0 j
 b0 f
 bx e
-bx d
+b0 d
 b0 c
 bx b
 b0 a
 b0 `
-bx _
+b11 _
 b0 ^
-x]
-x\
-bx [
+0]
+0\
+b1111 [
 0Z
-bx Y
+b0 Y
 bx X
-bx W
+b0 W
 b0 V
 1N
 1M
@@ -241,7 +241,6 @@ b0 b
 #300
 05
 #350
-0\
 17
 15
 #400
@@ -298,7 +297,6 @@ b100 l
 05
 #1350
 b1 a
-b0 W
 b100 d
 1]
 b1111 <
@@ -480,7 +478,6 @@ b1000 e
 16
 05
 #3950
-b0 Y
 b1000 [
 1\
 15

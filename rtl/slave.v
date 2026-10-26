@@ -104,6 +104,10 @@ always @(posedge clk or negedge rst_n) begin
         bresp <= 2'b0;
         tx_wr_en <= 1'b0;
         tx_data <= 0;
+        burstcnt <= 0;
+        resp_rg <= 2'b11;
+        wr_addr <= 0;
+        rd_en_waddr <= 1'b0;
         state = IDLE;
     end else begin
         case (state)
@@ -227,6 +231,9 @@ always @(posedge clk or negedge rst_n) begin
         rdata <= 0;
         rresp <= 2'b0;
         rx_rd_en <= 1'b0;
+        r_burstcnt <= 1'b0;
+        rd_addr <= 32'hF;
+        rd_en_raddr <= 1'b0;
         r_state <= R_IDLE;
     end
     else begin
