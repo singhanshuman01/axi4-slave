@@ -92,11 +92,11 @@ module memory #(
 
 reg [DATA_WIDTH-1:0] mem [0:MEM_DEPTH-1];
 
-// assign read_data = mem[read_addr];
+assign read_data = mem[read_addr];
 
-always @(posedge rclk) begin
-    if(ren && !empty) read_data <= mem[read_addr];
-end
+// always @(posedge rclk) begin
+//     if(ren && !empty) read_data <= mem[read_addr];
+// end
 
 always @(posedge wclk) begin
     if (wen && !full) mem[write_addr] <= write_data;
