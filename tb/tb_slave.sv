@@ -162,7 +162,7 @@ task automatic read_addr(  input logic [ADDR_WIDTH-1:0] addr,
 endtask
 
 task automatic read_data();
-    @(negedge clk);
+    @(posedge clk);
     rready <= 1'b1;
     wait(rvalid);
     @(posedge clk);
