@@ -150,7 +150,7 @@ task automatic read_addr(  input logic [ADDR_WIDTH-1:0] addr,
 endtask
 
 task automatic read_data();
-    @(negedge clk);
+    @(posedge clk);
     rready <= 1'b1;
     wait(rvalid);
     @(posedge clk);
@@ -169,6 +169,18 @@ task read_tx(input int num);
         tx_data_buf.push_back(tx_rd_data);
     end
     tx_rd_en <= 1'b0;
+endtask
+
+task write_rx(input int num);
+    @(posedge rx_wclk);
+    for (int i = 0; i<num; i=i+1) begin
+        if(!rx_full) begin
+            rx_wr_en<=1'b1;
+        end
+        rx_wr_data <= $urandom();
+        @(posedge rx_wclk);        
+    end
+    rx_wr_en<=1'b0;
 endtask
 
 initial begin
@@ -195,32 +207,47 @@ initial begin
     @(negedge clk);
     rst_n = 1'b1;
 
-    $display("Reset released; add top-level test scenarios here.");
+    $display("Reset released.");
 
     // TODO: Add AXI write/read and RX/TX FIFO stimulus and checks.
     repeat (10) @(posedge clk);
     
+    $display("\nTEST 1: single write on a register");
     write_addr(32'h0000_0000, 8'h00);
     write_data(32'hFAAA_14A5, 4'hF);
     take_resp();
 
     repeat(3) @(posedge clk);
 
+    $display("\nTEST 2: single read on a register");
     read_addr(32'h0000_0000, 8'h00);
     read_data();
+
+    $display("\nTEST 3: Burst write on a register");
     write_addr(32'h0000_0000, 8'h07);
     repeat(8) write_data($urandom(), 4'hf);
     take_resp();
 
+    $display("\nTEST 4: single read on a register");
     read_addr(32'h0000_0000, 8'h00);
     read_data();
 
-    repeat(2) @(posedge clk);
-    write_addr(32'h0000_00008, 8'h11);
-    repeat(16) write_data($urandom(), 4'hF);
-    read_tx(3);
-    repeat(2) write_data($urandom(), 4'hF);
-    take_resp();
+    $display("\nTEST 5: parallel read write on FIFOs");
+    fork
+        begin
+            repeat(2) @(posedge clk);
+            write_addr(32'h0000_00008, 8'h11);
+            repeat(16) write_data($urandom(), 4'hF);
+            read_tx(3);
+            repeat(2) write_data($urandom(), 4'hF);
+            take_resp();
+        end
+        write_rx(16);
+        begin
+            read_addr(32'h0000_000C, 8'hF);
+            repeat(16) read_data();
+        end
+    join
     
     repeat (10) @(posedge clk);
     $finish;
