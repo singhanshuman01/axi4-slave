@@ -6,39 +6,43 @@ localparam DATA_WIDTH = 32;
 localparam ADDR_WIDTH = 32;
 localparam MEM_DEPTH = 16;
 
+
+logic [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_data_buf[$];
+logic [DATA_WIDTH-1:0] rx_data_buf[$];
+
 logic clk;
 logic rst_n;
 
 logic [ADDR_WIDTH-1:0] awaddr;
 logic [7:0] awburst;
 logic awvalid;
-wire awready;
+logic awready;
 
 logic [DATA_WIDTH-1:0] wdata;
 logic [$clog2(DATA_WIDTH)-2:0] wstrb;
 logic wvalid;
-wire wready;
+logic wready;
 
-wire [1:0] bresp;
-wire bvalid;
+logic [1:0] bresp;
+logic bvalid;
 logic bready;
 
 logic [ADDR_WIDTH-1:0] araddr;
-logic [8:0] arburst;
+logic [7:0] arburst;
 logic arvalid;
-wire arready;
+logic arready;
 
-wire [DATA_WIDTH-1:0] rdata;
-wire [1:0] rresp;
-wire rvalid;
+logic [DATA_WIDTH-1:0] rdata;
+logic [1:0] rresp;
+logic rvalid;
 logic rready;
 
-wire tx_empty;
+logic tx_empty;
 logic tx_rclk;
 logic tx_rd_en;
-wire [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_rd_data;
+logic [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] tx_rd_data;
 
-wire rx_full;
+logic rx_full;
 logic rx_wclk;
 logic rx_wr_en;
 logic [DATA_WIDTH-1:0] rx_wr_data;
@@ -95,6 +99,78 @@ always #7 tx_rclk = ~tx_rclk;
 initial rx_wclk = 1'b0;
 always #11 rx_wclk = ~rx_wclk;
 
+task automatic write_addr(  input logic [ADDR_WIDTH-1:0] addr,
+                            input logic [7:0] burst);
+    @(posedge clk);
+    awaddr <= addr;
+    awburst <= burst;
+    awvalid <= 1'b1;
+    wait(awready);
+    @(posedge clk);
+    awvalid <= 1'b0;
+
+    $display("WRITE ADDRESS handshake completed, ADDR=%h BURST=%0d", addr, burst);
+endtask
+
+task automatic write_data(  input logic [DATA_WIDTH-1:0] data,
+                            input logic [$clog2(DATA_WIDTH)-2:0] strobe);
+    @(posedge clk);
+    wdata <= data;
+    wvalid <= 1'b1;
+    wstrb <= strobe;
+    wait(wready);
+    @(posedge clk);
+    wvalid <= 1'b0;
+
+    $display("WRITE DATA handshake complete, DATA=%h STROBE=%b", data, strobe);
+endtask
+
+task automatic take_resp();
+    @(posedge clk);
+    bready <= 1'b1;
+    wait(bvalid);
+    @(posedge clk);
+    // @(posedge clk);
+    bready <= 1'b0;
+
+    $display("RESPONSE recieved, BRESP=%b", bresp);
+endtask
+
+task automatic read_addr(  input logic [ADDR_WIDTH-1:0] addr,
+                            input logic [7:0] burst);
+    @(posedge clk);
+    arvalid <= 1'b1;
+    araddr <= addr;
+    arburst <= burst;
+    wait(arready);
+    @(posedge clk);
+    arvalid <= 1'b0;
+
+    $display("READ ADDR handshake completed, ADDR=%h BURST=%d", addr, burst);
+endtask
+
+task automatic read_data();
+    @(negedge clk);
+    rready <= 1'b1;
+    wait(rvalid);
+    @(posedge clk);
+    rready <= 1'b0;
+
+    $display("RECIEVED READ DATA successfully, DATA=%h RESP=%b", rdata, rresp);
+endtask
+
+task read_tx(input int num);
+    @(posedge tx_rclk);
+    for (int i = 0; i < num ; i=i+1) begin        
+        if(!tx_empty) begin
+            tx_rd_en <= 1'b1;
+        end
+        @(posedge tx_rclk);
+        tx_data_buf.push_back(tx_rd_data);
+    end
+    tx_rd_en <= 1'b0;
+endtask
+
 initial begin
     rst_n = 1'b0;
 
@@ -123,11 +199,35 @@ initial begin
 
     // TODO: Add AXI write/read and RX/TX FIFO stimulus and checks.
     repeat (10) @(posedge clk);
+    
+    write_addr(32'h0000_0000, 8'h00);
+    write_data(32'hFAAA_14A5, 4'hF);
+    take_resp();
+
+    repeat(3) @(posedge clk);
+
+    read_addr(32'h0000_0000, 8'h00);
+    read_data();
+    write_addr(32'h0000_0000, 8'h07);
+    repeat(8) write_data($urandom(), 4'hf);
+    take_resp();
+
+    read_addr(32'h0000_0000, 8'h00);
+    read_data();
+
+    repeat(2) @(posedge clk);
+    write_addr(32'h0000_00008, 8'h11);
+    repeat(16) write_data($urandom(), 4'hF);
+    read_tx(3);
+    repeat(2) write_data($urandom(), 4'hF);
+    take_resp();
+    
+    repeat (10) @(posedge clk);
     $finish;
 end
 
 initial begin
-    #100000;
+    #200000;
     $fatal(1, "Testbench timed out");
 end
 
