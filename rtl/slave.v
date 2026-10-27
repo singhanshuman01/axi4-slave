@@ -126,9 +126,8 @@ always @(posedge clk or negedge rst_n) begin
                 if(rd_en_waddr) begin
                     rd_en_waddr <= 1'b0;
                 end
-                wready <= 1'b1;
+                wready <= ((wr_addr[3:2]==2'b10) && tx_full)?1'b0:1'b1;
                 if(wvalid && wready) begin
-                    // if(burstcnt == 0) state <= RESP;
                     if(wr_addr[1:0] != 2'b00) begin
                         resp_rg <= 2'b10;
                         if(burstcnt==0) begin
@@ -148,7 +147,7 @@ always @(posedge clk or negedge rst_n) begin
                                 else burstcnt <= burstcnt-1'b1;
                             end
                             2'b10: begin
-                                tx_wr_en <= 1'b1;
+                                tx_wr_en <= !tx_full;
                                 tx_data <= {wstrb, wdata};
                                 resp_rg <= 2'b00;
                                 if(burstcnt==0) begin
@@ -167,7 +166,6 @@ always @(posedge clk or negedge rst_n) begin
                             end
                         endcase
                     end
-                    // if(burstcnt>0) burstcnt <= burstcnt - 1'b1;
                 end else tx_wr_en <= 1'b0;
             end
             RESP: begin
