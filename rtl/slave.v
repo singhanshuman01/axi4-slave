@@ -108,7 +108,7 @@ always @(posedge clk or negedge rst_n) begin
         resp_rg <= 2'b11;
         wr_addr <= 0;
         rd_en_waddr <= 1'b0;
-        state = IDLE;
+        state <= IDLE;
     end else begin
         case (state)
             IDLE: begin
@@ -173,7 +173,10 @@ always @(posedge clk or negedge rst_n) begin
                 tx_wr_en <= 1'b0;
                 bresp <= resp_rg;
                 bvalid <= 1'b1;
-                if(bvalid && bready) state <= IDLE;
+                if(bvalid && bready) begin
+                    state <= IDLE;
+                    bvalid <= 1'b0;
+                end
             end
             default: state = IDLE;
         endcase
