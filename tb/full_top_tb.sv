@@ -354,7 +354,34 @@ endclass
 
 class scoreboard;
     mailbox #(txn) mon2scb;
+
+    bit [31:0] ctrl_copy;
+    bit [39:0] tx_copy[$];
+    bit [31:0] rx_copy[$];
+
+    function new(mailbox #(txn) mon2scb);
+        this.mon2scb = mon2scb;
+    endfunction
+
+    task run();
+        fork
+            axi_check();
+            tx_check();
+            rx_check();
+        join_none
+    endtask
+
+    task axi_check();
+        txn t;
+        mon2scb.get(t);
+        if(t.op_type==AXI_WRITE) write_check(t);
+        if(t.op_type==AXI_READ) read_check(t);
+    endtask
     
+    task write_check(txn t);
+
+    endtask
+
 endclass
 
 class agent;
