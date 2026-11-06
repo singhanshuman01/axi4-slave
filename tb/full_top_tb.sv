@@ -29,7 +29,8 @@ endinterface
 
 interface tx_intf #(
     parameter DATA_WIDTH=32
-) (tx_rclk);
+) (input tx_rclk,
+    input rst_n);
     logic                                       tx_empty;
     logic                                       tx_rd_en;
     logic [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0]   tx_rd_data;
@@ -38,7 +39,8 @@ endinterface
 interface rx_intf#(
     parameter DATA_WIDTH=32
 ) (
-    input rx_wclk
+    input rx_wclk,
+    input rst_n
 );
     logic                   rx_full;
     logic                   rx_wr_en;
@@ -124,6 +126,7 @@ class generator;
             t.wdata.push_back($urandom());
             t.wstrb.push_back($urandom_range(15));
         end
+        send(t);
     endtask
 
     task read_word(bit[31:0] addr);
@@ -354,13 +357,21 @@ endclass
 
 class scoreboard;
     mailbox #(txn) mon2scb;
+    mailbox #(fifo_agent::tx_agent::tx_txn) tx2scb;
+    mailbox #(fifo_agent::rx_agent::rx_txn) rx2scb;
 
     bit [31:0] ctrl_copy;
-    bit [39:0] tx_copy[$];
-    bit [31:0] rx_copy[$];
+    bit [39:0] tx_expcopy[$];
+    bit [39:0] tx_gotcopy[$];
+    bit [31:0] rx_expcopy[$];
 
-    function new(mailbox #(txn) mon2scb);
+    unsigned int pass=0;
+    unsigned int fail=0;
+
+    function new(mailbox #(txn) mon2scb, mailbox #(fifo_agent::tx_agent::tx_txn) tx2scb, mailbox #(fifo_agent::rx_agent::rx_txn) rx2scb);
         this.mon2scb = mon2scb;
+        this.tx2scb = tx2scb;
+        this.rx2scb = rx2scb;
     endfunction
 
     task run();
@@ -373,15 +384,243 @@ class scoreboard;
 
     task axi_check();
         txn t;
-        mon2scb.get(t);
-        if(t.op_type==AXI_WRITE) write_check(t);
-        if(t.op_type==AXI_READ) read_check(t);
+        forever begin
+            mon2scb.get(t);
+            if(t.op_type==AXI_WRITE) write_check(t);
+            if(t.op_type==AXI_READ) read_check(t);
+        end
     endtask
-    
+
+    function void print_response(bit [1:0] exp, bit [1:0] actual);
+        string s1, s2;
+        s1 = (exp===2'b00) ? "OKAY" : "SLVERR";
+        s2 = (actual===2'b00) ? "OKAY" : "SLVERR";
+        if(exp===actual) begin
+            pass++;
+            $display("[SCB] Test passed: RESP=%s", s1);
+            return;
+        end
+        fail++;
+        $display("[SCB] Test failed: expected RESP=%s, actual RESP=%s", s1, s2);
+        return;
+    endfunction
+
     task write_check(txn t);
-
+        if(t.waddr[1:0] === 2'b00) begin
+            if(t.waddr[3:2] === 2'b00)begin
+                ctrl_copy = t.wdata[t.wdata.size()-1];
+                print_response(2'b00, t.bresp);
+            end
+            else if(t.waddr[3:2] === 2'b10) begin
+                foreach(t.wdata[i]) tx_expcopy.push_back({t.wstrb[i], t.wdata[i]});
+                print_response(2'b00, t.bresp);
+            end
+            else print_response(2'b10, t.bresp);
+        end else print_response(2'b10, t.bresp);
     endtask
 
+    task tx_check();
+        fifo_agent::tx_agent::tx_txn ttx;
+        forever begin
+            tx2scb.get(ttx);
+            tx_gotcopy.push_back({ttx.strb, ttx.data});
+            compare_tx();
+        end
+    endtask
+
+    function void compare_tx();
+        bit[35:0] g, e;
+        while(tx_gotcopy.size()>0 && tx_expcopy.size()>0) begin
+            g = tx_gotcopy.pop_front();
+            e = tx_expcopy.pop_front();
+            if(g!==e) begin
+                $display("[SCB] TX_data mismatch: got=%h exp=%h", g, e);
+                fail++;
+            end
+        end
+    endfunction
+    
+    task read_check(txn t);
+        if(t.raddr[1:0] === 2'b00) begin
+            if(t.raddr[3:2] === 2'b00) begin
+                if(ctrl_copy===t.rdata[t.rdata.size()-1]) pass++;
+                else fail++;
+                print_response(2'b00, t.rresp[t.rresp.size()-1]);
+            end
+            else if(t.raddr[3:2] === 2'b01) begin
+                foreach(t.rresp[i]) print_response(2'b00, t.rresp[i]);
+            end
+            else if(t.raddr[3:2] === 2'b11) begin
+                foreach(t.rresp[i]) begin
+                    print_response(2'b00, t.rresp[i]);
+                end
+                foreach(t.rdata[i]) begin
+                    if(rx_expcopy.size()>0) begin
+                        
+                        if(t.rdata[i] === rx_expcopy.pop_front()) pass++;
+                        else begin
+                            $display("[SCB] Read data mismatch");
+                            fail++;
+                        end
+                    end else begin
+                        $display("[SCB] Error: No data in expected queue but data came on read channel");
+                    end
+                end
+            end
+            else foreach(t.rresp[i]) print_response(2'b10, t.rresp[i]);
+        end else foreach(t.rresp[i]) print_response(2'b10, t.rresp[i]);
+    endtask
+
+    task rx_check();
+        fifo_agent::rx_agent::rx_txn rtx;
+        forever begin
+            rx2scb.get(rtx);
+            rx_expcopy.push_back(rtx.data);
+        end
+    endtask
+
+endclass
+
+class fifo_agent;
+    tx_agent txa;
+    rx_agent rxa;
+    function new(   virtual tx_intf t_vif,
+                    virtual rx_intf r_vif,
+                    mailbox #(tx_txn) txm2scb,
+                    mailbox #(rx_txn) rxm2scb);
+        txa = new(t_vif, txm2scb);
+        rxa = new(r_vif, rxm2scb);
+    endfunction
+
+    task start();
+        fork            
+            txa.run();
+            rxa.run();
+        join_none
+    endtask
+
+    class tx_agent;
+        class tx_txn;
+            bit [31:0] data;
+            bit [3:0] strb;
+        endclass
+
+        class tx_driver;
+            virtual tx_intf t_vif;
+
+            function new(virtual tx_intf t_vif);
+                this.t_vif = t_vif;
+            endfunction
+
+            task run();
+                forever begin
+                    if(t_vif.rst_n===1'b0) t_vif.tx_rd_en <= 1'b0;
+                    wait(t_vif.rst_n===1'b1);
+                    @(posedge t_vif.rclk);
+                    t_vif.tx_rd_en <= !t_vif.tx_empty;
+                end
+            endtask
+
+        endclass
+
+        class tx_monitor;
+            virtual tx_intf t_vif;
+            mailbox #(tx_txn) txm2scb;
+
+            function new(virtual tx_intf t_vif, mailbox #(tx_txn) txm2scb);
+                this.t_vif = t_vif;
+                this.txm2scb = txm2scb;
+            endfunction
+
+            task run();
+                tx_txn  ttx;
+                forever begin
+                    @(posedge t_vif.rclk);
+                    if(t_vif.rst_n !== 1'b0 && t_vif.tx_rd_en===1'b1 && t_vif.tx_empty===1'b0) begin
+                        ttx = new();
+                        ttx.data = t_vif.tx_rd_data[31:0];
+                        ttx.strb = t_vif.tx_rd_data[35:32];
+                        txm2scb.put(ttx);
+                    end
+                end
+            endtask
+        endclass
+
+        tx_driver tdrv;
+        tx_monitor txm;
+        function new(virtual tx_intf t_vif, mailbox #(tx_txn) txm2scb);
+            tdrv = new(t_vif);
+            txm = new(t_vif, txm2scb);
+        endfunction
+
+        task run();
+            fork
+                tdrv.run();
+                txm.run();
+            join_none
+        endtask
+    endclass
+
+    class rx_agent;
+        class rx_txn;
+            bit [31:0] data;
+        endclass
+
+        class rx_driver;
+            virtual rx_intf r_vif;
+            bit [31:0] wr_data;
+            function new(virtual rx_intf r_vif);
+                this.r_vif = r_vif;
+            endfunction
+
+            task run();
+                forever begin
+                    if(r_vif.rst_n===1'b0) r_vif.rx_wr_en<= 1'b0;
+                    wait(r_vif.rst_n===1'b1);
+                    @(posedge r_vif.rx_wclk);
+                    wr_data = $urandom;
+                    r_vif.rx_wr_en <= 1'b1;
+                    r_vif.rx_wr_data <= wr_data;
+                end
+            endtask
+
+        endclass
+
+        class rx_monitor;
+            virtual rx_intf r_vif;
+            mailbox #(rx_txn) rxm2scb;
+
+            function new(virtual rx_intf r_vif, mailbox #(rx_txn) rxm2scb;):
+                this.r_vif = r_vif;
+                this.rxm2scb = rxm2scb;
+            endfunction
+
+            task run();
+                rx_txn rtx;
+                forever begin
+                    @(posedge r_vif.rx_wclk);
+                    if(r_vif.rst_n!==1'b0 && r_vif.rx_wr_en===1'b1 && r_vif.rx_full===1'b0);
+                    rtx = new();
+                    rtx.data = r_vif.rx_wr_data;
+                    rxm2scb.put(rtx);
+                end
+            endtask
+        endclass
+
+        rx_driver rdrv;
+        rx_monitor rxm;
+        function new(virtual rx_intf r_vif, mailbox #(rx_txn) rxm2scb);
+            rdrv = new(r_vif);
+            rxm = new(r_vif, rxm2scb);
+        endfunction
+
+        task run();
+            fork
+                rdrv.run();
+                rxm.run();
+            join_none
+        endtask
+    endclass
 endclass
 
 class agent;
@@ -389,7 +628,41 @@ class agent;
 endclass
 
 class env;
+    generator gen;
+    driver drv;
+    monitor mon;
+    scoreboard scb;
+    fifo_agent fag;
 
+    mailbox #(txn) gen2drv;
+    mailbox #(txn) mon2scb;
+    mailbox #(fifo_agent::tx_agent::tx_txn) tx2scb;
+    mailbox #(fifo_agent::rx_agent::rx_txn) rx2scb;
+
+    virtual slave_intf vif;
+    
+    function new(virtual slave_intf vif, virtual tx_intf t_vif, virtual rx_intf r_vif);
+        gen2drv = new();
+        mon2scb = new();
+        tx2scb  = new();
+        rx2scb  = new();
+
+        gen = new(gen2drv);
+        drv = new(vif, gen2drv);
+        mon = new(vif, mon2scb);
+        scb = new(mon2scb, tx2scb, rx2scb);
+        fag = new(t_vif, r_vif, tx2scb, rx2scb);
+    endfunction
+
+    task start();
+        fork
+            gen.run();
+            drv.run();
+            mon.run();
+            scb.run();
+            fag.start();
+        join_none
+    endtask
 endclass
 
 class test;
