@@ -25,8 +25,26 @@ axi4-slave/
 │   ├── sync_fifo.vcd
 │   ├── tb_slave.vcd
 │   └── tb_top.vcd
-└── tb/
-    (testbench files are present in the repository but are not documented here)
+├── tb/
+│   (testbench files are present in the repository but are not documented here)
+│
+└── verilator_script.sh
+
+```
+
+## Running Instructions
+Clone the repo using
+```
+git clone https://github.com/singhanshuman01/axi4-slave
+```
+or if you use ssh
+```
+git clone git@github.com:singhanshuman01/axi4-slave.git
+```
+give executable permission to script and run
+```
+sudo chmod +x verilator_script.sh
+./verilator_script.sh
 ```
 
 ## RTL Overview
