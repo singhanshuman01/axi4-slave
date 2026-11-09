@@ -540,11 +540,11 @@ class scoreboard;
             if(t.waddr[3:2] === 2'b00)begin
                 ctrl_copy = t.wdata[t.wdata.size()-1];
                 ctrl_known = 1;
-                print_response("WRITE", 2'b00, t.bresp);
+                print_response("WRITE CTRL register", 2'b00, t.bresp);
             end
             else if(t.waddr[3:2] === 2'b10) begin
                 foreach(t.wdata[i]) tx_expcopy.push_back({t.wstrb[i], t.wdata[i]});
-                print_response("WRITE", 2'b00, t.bresp);
+                print_response("WRITE TX FIFO", 2'b00, t.bresp);
             end
             else print_response("WRITE", 2'b10, t.bresp);
         end else print_response("WRITE", 2'b10, t.bresp);
@@ -567,31 +567,41 @@ class scoreboard;
             if(g!==e) begin
                 $display("[SCB] TX_data mismatch: got=%h exp=%h", g, e);
                 fail++;
+            end else begin
+                $display("[SCB] TX_data match: got=%h exp=%h", g, e);
+                pass++;
             end
         end
     endfunction
     
+    bit [31:0] exp_rx_data;
     task read_check(txn t);
         if(t.raddr[1:0] === 2'b00) begin
             if(t.raddr[3:2] === 2'b00) begin
-                foreach(t.rresp[i]) print_response("READ", 2'b00, t.rresp[i]);
-                if(ctrl_copy===t.rdata[t.rdata.size()-1]) pass++;
-                else fail++;
-                
+                foreach(t.rresp[i]) print_response("READ CTRL register", 2'b00, t.rresp[i]);
+                if(ctrl_copy===t.rdata[t.rdata.size()-1]) begin
+                    $display("[SCB] READ CTRL register passed: exp=%h got=%h", ctrl_copy, t.rdata[t.rdata.size()-1]);
+                    pass++;
+                end else begin
+                    $display("[SCB] READ CTRL register failed: exp=%h got=%h", ctrl_copy, t.rdata[t.rdata.size()-1]);
+                    fail++;
+                end
             end
             else if(t.raddr[3:2] === 2'b01) begin
-                foreach(t.rresp[i]) print_response("READ", 2'b00, t.rresp[i]);
+                foreach(t.rresp[i]) print_response("READ STAT register", 2'b00, t.rresp[i]);
             end
             else if(t.raddr[3:2] === 2'b11) begin
                 foreach(t.rresp[i]) begin
-                    print_response("READ", 2'b00, t.rresp[i]);
+                    print_response("READ RX FIFO", 2'b00, t.rresp[i]);
                 end
                 foreach(t.rdata[i]) begin
                     if(rx_expcopy.size()>0) begin
-                        
-                        if(t.rdata[i] === rx_expcopy.pop_front()) pass++;
-                        else begin
-                            $display("[SCB] Read data mismatch");
+                        exp_rx_data = rx_expcopy.pop_front();
+                        if(t.rdata[i] === exp_rx_data) begin
+                            $display("[SCB] RX Read data match: exp=%h got=%h", exp_rx_data, t.rdata[i]);
+                            pass++;
+                        end else begin
+                            $display("[SCB] RX Read data mismatch: exp=%h got=%h", exp_rx_data, t.rdata[i]);
                             fail++;
                         end
                     end else begin
@@ -600,8 +610,8 @@ class scoreboard;
                     end
                 end
             end
-            else foreach(t.rresp[i]) print_response("TX READ", 2'b10, t.rresp[i]);
-        end else foreach(t.rresp[i]) print_response("Misaligned READ", 2'b10, t.rresp[i]);
+            else foreach(t.rresp[i]) print_response("TX READ not allowed", 2'b10, t.rresp[i]);
+        end else foreach(t.rresp[i]) print_response("Misaligned READ op", 2'b10, t.rresp[i]);
     endtask
 
     rx_agent::rx_txn rtx;
