@@ -62,21 +62,23 @@ class txn;
 
     bit [31:0] wdata [$];
     bit [3:0] wstrb[$];
+    bit [1:0] bresp;
 
     bit [31:0] rdata[$];
     bit [1:0] rresp[$];
-    bit [1:0] bresp;
 
     constraint c_len {   wburstlen inside {[0:8]};
                          rburstlen inside {[0:8]}; }
     constraint c_waddr { waddr[31:4]==0;
-                         waddr[1:0] dist { 2'b00 := 90, [2'b01:2'b11] :/ 10}; }
+                         waddr[3:2] inside {[0:3]};
+                         waddr[1:0] ==0; }
     constraint c_raddr { raddr[31:4]==0;
-                         raddr[1:0] dist { 2'b00 := 90, [2'b01:2'b11] :/ 10}; }
+                         raddr[3:2] inside {[0:3]};
+                         raddr[1:0] ==0; }
 
     constraint c_delay { pre_delay inside {[0:5]}; }
-    // constraint c_ready_delay { ready_delay inside {[0:5]}; }
-    constraint c_ready_delay { ready_delay ==0; }
+    constraint c_ready_delay { ready_delay inside {[0:5]}; }
+    // constraint c_ready_delay { ready_delay ==0; }
 
     constraint c_op_type { op_type dist {AXI_READ:=1, AXI_WRITE:=1}; }
 
@@ -409,7 +411,7 @@ class tx_agent;
 
     task run();
         fork
-            // tdrv.run();
+            tdrv.run();
             txm.run();
         join_none
     endtask
@@ -745,7 +747,7 @@ class random_test extends base_test;
 
     virtual task body();
         $display("=====\\-// RANDOM TEST \\-/=====");
-        env1.gen.random_txn(100);
+        env1.gen.random_txn(1000);
     endtask
 endclass
 
