@@ -409,7 +409,7 @@ class tx_agent;
 
     task run();
         fork
-            tdrv.run();
+            // tdrv.run();
             txm.run();
         join_none
     endtask
@@ -697,7 +697,10 @@ class base_test;
     task run();
         env1.start();
         body();
-        env1.wait_done();
+        fork
+            env1.txa.tdrv.run();
+            env1.wait_done();
+        join_any
         env1.scb.report();
     endtask
 endclass
@@ -729,6 +732,8 @@ class directed_tests extends base_test;
         env1.gen.read_word (32'h0000_0008);                       // read WO TX FIFO
         env1.gen.write_word(32'h0000_0001, 32'hAAAA_AAAA, 4'hf);  // misaligned write
         env1.gen.read_word (32'h0000_0002);                       // misaligned read
+
+        env1.gen.write_burst(32'h0000_0008, 32);
 
     endtask
 endclass

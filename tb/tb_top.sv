@@ -159,14 +159,14 @@ task automatic read_data();
     $display("RECIEVED READ DATA successfully, DATA=%h RESP=%b", rdata, rresp);
 endtask
 
+logic [DATA_WIDTH+$clog2(DATA_WIDTH)-2:0] temp_data;
 task read_tx(input int num);
     @(posedge tx_rclk);
     for (int i = 0; i < num ; i=i+1) begin        
         if(!tx_empty) begin
             tx_rd_en <= 1'b1;
-        end
+        end else tx_rd_en <= 1'b0;
         @(posedge tx_rclk);
-        tx_data_buf.push_back(tx_rd_data);
     end
     tx_rd_en <= 1'b0;
 endtask
@@ -183,25 +183,26 @@ task write_rx(input int num);
     rx_wr_en<=1'b0;
 endtask
 
+always @(posedge clk) begin
+    if(rvalid && rready) $display("READ DATA: successfully received: DATA=%h RRESP=%b", rdata, rresp);
+end
+
+always @(posedge tx_rclk) begin
+    if(tx_rd_en) $display("[TX READ] succesfull: DATA=%h", tx_rd_data);
+end
+
 initial begin
     rst_n = 1'b0;
 
-    awaddr = '0;
-    awburst = '0;
-    awvalid = 1'b0;
-    wdata = '0;
-    wstrb = '0;
-    wvalid = 1'b0;
+    awaddr = '0;awburst = '0;awvalid = 1'b0;
+    wdata = '0;wstrb = '0;wvalid = 1'b0;
     bready = 1'b0;
 
-    araddr = '0;
-    arburst = '0;
-    arvalid = 1'b0;
+    araddr = '0;arburst = '0;arvalid = 1'b0;
     rready = 1'b0;
 
     tx_rd_en = 1'b0;
-    rx_wr_en = 1'b0;
-    rx_wr_data = '0;
+    rx_wr_en = 1'b0;rx_wr_data = '0;
 
     repeat (5) @(posedge clk);
     @(negedge clk);
@@ -210,6 +211,7 @@ initial begin
     $display("Reset released.");
 
     // TODO: Add AXI write/read and RX/TX FIFO stimulus and checks.
+    /*
     repeat (10) @(posedge clk);
     
     $display("\nTEST 1: single write on a register");
@@ -236,7 +238,7 @@ initial begin
     fork
         begin
             repeat(2) @(posedge clk);
-            write_addr(32'h0000_00008, 8'h11);
+            write_addr(32'h0000_0008, 8'h11);
             repeat(16) write_data($urandom(), 4'hF);
             read_tx(3);
             repeat(2) write_data($urandom(), 4'hF);
@@ -248,6 +250,40 @@ initial begin
             repeat(16) read_data();
         end
     join
+
+    repeat(5) @(posedge clk);
+
+    $display("\n\nTEST 6: READ op on rx fifo");
+    write_rx(16);
+    read_addr(32'h0000_000C, 8'hF);
+    wait(rvalid);
+    repeat(3) @(posedge clk);
+    rready<= 1'b1;
+    repeat(3) @(posedge clk);
+    rready <= 1'b0;
+    repeat(5) @(posedge clk);
+    rready <= 1'b1;
+    repeat(13) @(posedge clk);
+    rready <= 1'b0;
+    */
+
+    $display("TEST 7: TX_FIFO overflow");
+    write_addr(32'h0000_0008, 8'd25);
+    @(posedge clk);
+    wdata <= $urandom;
+    wvalid <= 1'b1;
+    wstrb <= 4'hf;
+    wait(wready);
+    repeat(25) begin
+        @(posedge clk);
+        if(wready) begin
+            wstrb<= 4'hf;
+            wdata <= $urandom;
+            tx_data_buf.push_back({wstrb, wdata});
+        end
+    end
+    wvalid <= 1'b0;
+    while(!tx_empty) read_tx(1);
     
     repeat (10) @(posedge clk);
     $finish;
