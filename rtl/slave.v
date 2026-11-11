@@ -202,11 +202,9 @@ assign wr_data_raddr = {arburst, araddr};
 reg [7:0] r_burstcnt;
 reg [ADDR_WIDTH-1:0] rd_addr;
 
-reg isCTRL, isSTAT, isRX;
-assign rdata =  (isCTRL) ? ctrl : 
-                ((isSTAT) ? status : 
-                ((isRX) ? rx_data : 0));
-assign rx_rd_en = (isRX & rvalid & rready)? 1'b1: 1'b0;
+reg [DATA_WIDTH-1:0] rdata_q;
+assign rdata =  rdata_q;
+assign rx_rd_en = ((rd_addr[3:2]==2'b11) & rvalid & rready)? 1'b1: 1'b0;
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
@@ -214,14 +212,13 @@ always @(posedge clk or negedge rst_n) begin
         r_burstcnt <= 1'b0;
         rd_addr <= 32'hF; rd_en_raddr <= 1'b0;
         r_state <= R_IDLE;
-        isCTRL <= 1'b0; isSTAT <= 1'b0; isRX <= 1'b0;
+        rdata_q <= 0;
     end
     else begin
         case(r_state)
         R_IDLE: begin
             rvalid <= 1'b0;
             rd_en_raddr <= 1'b0;
-            isCTRL <= 1'b0; isSTAT <= 1'b0; isRX <= 1'b0;
             if(!empty_raddr) begin
                 rd_en_raddr <= 1'b1;
                 {r_burstcnt, rd_addr} <= rd_data_raddr;
@@ -239,28 +236,29 @@ always @(posedge clk or negedge rst_n) begin
             if((!rvalid || rready) &&
                 !(rvalid && rready && r_burstcnt == 8'd0)) begin
                 if(rd_addr[1:0] != 2'b00) begin
-                    isCTRL <= 1'b0; isSTAT <= 1'b0; isRX <= 1'b0;
+                    rdata_q <= 0;
                     rresp <= 2'b10;
                     rvalid <= 1'b1;
                 end else begin
                     case(rd_addr[3:2])
                     2'b00: begin
-                        isCTRL <= 1'b1;
+                        rdata_q <= ctrl;
                         rresp <= 2'b00;
                         rvalid <= 1'b1;
                     end
                     2'b01: begin
-                        isSTAT<=1'b1;
+                        rdata_q <= status;
                         rresp <= 2'b00;
                         rvalid <= 1'b1;
                     end
                     2'b10: begin
+                        rdata_q <= 0;
                         rresp <= 2'b10;
                         rvalid <= 1'b1;
                     end
                     2'b11: begin 
                         if(!rx_empty && !rvalid) begin
-                            isRX<=1'b1;
+                            rdata_q <= rx_data;
                             rresp <= 2'b00;
                             rvalid <= 1'b1;
                         end else rvalid <= 1'b0;
