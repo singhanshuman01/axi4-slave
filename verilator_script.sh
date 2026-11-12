@@ -1,1 +1,1 @@
-verilator --binary --timing --trace -j 4 -Wno-fatal -Wno-lint -Wno-style -Wno-TIMESCALEMOD -Wno-CONSTRAINTIGN --top-module tb -Mdir vsim rtl/sync_fifo.v rtl/async_fifo.v rtl/slave.v rtl/top.v tb/full_top_tb.sv
+verilator --binary --timing --trace -j 0 -Wno-fatal -Wno-lint -Wno-style -Wno-TIMESCALEMOD -Wno-CONSTRAINTIGN --top-module tb -Mdir vsim rtl/sync_fifo.v rtl/async_fifo.v rtl/slave.v rtl/top.v tb/full_top_tb.sv
