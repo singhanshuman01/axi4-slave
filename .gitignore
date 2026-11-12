@@ -1,2 +1,5 @@
 output/
 vsim/
+work/
+cov_html_report/
+cov_*
