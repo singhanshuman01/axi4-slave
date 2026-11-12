@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module tb_top;
+module tb;
 
 localparam DATA_WIDTH = 32;
 localparam ADDR_WIDTH = 32;
@@ -211,7 +211,7 @@ initial begin
     $display("Reset released.");
 
     // TODO: Add AXI write/read and RX/TX FIFO stimulus and checks.
-    /*
+    
     repeat (10) @(posedge clk);
     
     $display("\nTEST 1: single write on a register");
@@ -265,7 +265,7 @@ initial begin
     rready <= 1'b1;
     repeat(13) @(posedge clk);
     rready <= 1'b0;
-    */
+    
 
     $display("TEST 7: TX_FIFO overflow");
     write_addr(32'h0000_0008, 8'd25);
@@ -295,8 +295,8 @@ initial begin
 end
 
 initial begin
-    $dumpfile("sim/tb_top.vcd");
-    $dumpvars(0, tb_top);
+    $dumpfile("sim/waves.vcd");
+    $dumpvars(0, tb);
 end
 
 endmodule

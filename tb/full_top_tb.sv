@@ -70,11 +70,9 @@ class txn;
     constraint c_len {   wburstlen inside {[0:8]};
                          rburstlen inside {[0:8]}; }
     constraint c_waddr { waddr[31:4]==0;
-                         waddr[3:2] inside {[0:3]};
-                         waddr[1:0] ==0; }
+                         waddr[1:0] dist {2'b00:=90, [2'b01:2'b11]:/10}; }
     constraint c_raddr { raddr[31:4]==0;
-                         raddr[3:2] inside {[0:3]};
-                         raddr[1:0] ==0; }
+                         raddr[1:0] dist {2'b00 := 90, [2'b01:2'b11] :/ 10}; }
 
     constraint c_delay { pre_delay inside {[0:5]}; }
     constraint c_ready_delay { ready_delay inside {[0:5]}; }
@@ -369,9 +367,9 @@ class tx_agent;
         endfunction
 
         task run();
+            t_vif.tx_rd_en <= 1'b0;
+            wait(t_vif.rst_n === 1'b1);
             forever begin
-                if(t_vif.rst_n===1'b0) t_vif.tx_rd_en <= 1'b0;
-                wait(t_vif.rst_n===1'b1);
                 @(posedge t_vif.tx_rclk);
                 t_vif.tx_rd_en <= !t_vif.tx_empty;
             end
@@ -430,9 +428,11 @@ class rx_agent;
         endfunction
 
         task run();
+            r_vif.rx_wr_en <= 1'b0;
+            r_vif.rx_wr_data <= '0;
+            wait(r_vif.rst_n === 1'b1);
+            repeat(2) @(posedge r_vif.rx_wclk);
             forever begin
-                if(r_vif.rst_n===1'b0) r_vif.rx_wr_en<= 1'b0;
-                wait(r_vif.rst_n===1'b1);
                 @(posedge r_vif.rx_wclk);
                 wr_data = $urandom;
                 r_vif.rx_wr_en <= 1'b1;
@@ -540,7 +540,7 @@ class scoreboard;
 
         if(t.waddr[1:0] === 2'b00) begin
             if(t.waddr[3:2] === 2'b00)begin
-                ctrl_copy = t.wdata[t.wdata.size()-1];
+                foreach(t.wdata[i]) ctrl_copy = t.wdata[i];
                 ctrl_known = 1;
                 print_response("WRITE CTRL register", 2'b00, t.bresp);
             end
@@ -585,7 +585,7 @@ class scoreboard;
                     $display("[SCB] READ CTRL register passed: exp=%h got=%h", ctrl_copy, t.rdata[t.rdata.size()-1]);
                     pass++;
                 end else begin
-                    $display("[SCB] READ CTRL register failed: exp=%h got=%h", ctrl_copy, t.rdata[t.rdata.size()-1]);
+                    $display("[SCB] %0t READ CTRL register failed: exp=%h got=%h", $time, ctrl_copy, t.rdata[t.rdata.size()-1]);
                     fail++;
                 end
             end
@@ -724,16 +724,15 @@ class directed_tests extends base_test;
         env1.gen.write_word(32'h0000_0008, 32'h1111_1111, 4'hf);
         env1.gen.write_word(32'h0000_0008, 32'h2222_2222, 4'h3);
         env1.gen.write_burst(32'h0000_0008, 4);
-        // RX FIFO (rx_driver keeps filling it). Single-beat reads only here:
-        // multi-beat RX reads hit a DUT bug -> see rx_burst_tests (+TEST=rxburst)
+        
         env1.gen.read_word (32'h0000_000C);
         env1.gen.read_word (32'h0000_000C);
         // error cases
-        env1.gen.write_word(32'h0000_0004, 32'h1234_5678, 4'hf);  // write RO STATUS
-        env1.gen.write_word(32'h0000_000C, 32'h1234_5678, 4'hf);  // write RO RX FIFO
-        env1.gen.read_word (32'h0000_0008);                       // read WO TX FIFO
-        env1.gen.write_word(32'h0000_0001, 32'hAAAA_AAAA, 4'hf);  // misaligned write
-        env1.gen.read_word (32'h0000_0002);                       // misaligned read
+        env1.gen.write_word(32'h0000_0004, 32'h1234_5678, 4'hf);
+        env1.gen.write_word(32'h0000_000C, 32'h1234_5678, 4'hf);
+        env1.gen.read_word (32'h0000_0008);
+        env1.gen.write_word(32'h0000_0001, 32'hAAAA_AAAA, 4'hf);
+        env1.gen.read_word (32'h0000_0002);
 
         env1.gen.write_burst(32'h0000_0008, 32);
 
@@ -747,7 +746,7 @@ class random_test extends base_test;
 
     virtual task body();
         $display("=====\\-// RANDOM TEST \\-/=====");
-        env1.gen.random_txn(1000);
+        env1.gen.random_txn(5000);
     endtask
 endclass
 
@@ -758,8 +757,8 @@ module tb;
     logic rst_n = 0;
 
     always #5 clk = ~clk;
-    always #12 tx_rclk = ~tx_rclk;
-    always #17 rx_wclk = ~rx_wclk;
+    always #53 tx_rclk = ~tx_rclk;
+    always #61 rx_wclk = ~rx_wclk;
 
     initial begin
         rst_n = 1'b0;
