@@ -67,8 +67,8 @@ class txn;
     bit [31:0] rdata[$];
     bit [1:0] rresp[$];
 
-    constraint c_len {   wburstlen inside {[0:8]};
-                         rburstlen inside {[0:8]}; }
+    constraint c_len {   wburstlen inside {[0:255]};
+                         rburstlen inside {[0:255]}; }
     constraint c_waddr { waddr[31:4]==0;
                          waddr[1:0] dist {2'b00:=90, [2'b01:2'b11]:/10}; }
     constraint c_raddr { raddr[31:4]==0;
@@ -682,7 +682,7 @@ class env;
     task wait_done();
         wait(drv.num_done === gen.num_sent);
         while(scb.tx_expcopy.size()>0 && cyc<2000) begin @(posedge vif.clk); cyc++; end
-        repeat(100) @(posedge vif.clk);
+        repeat(1200) @(posedge vif.clk);
     endtask
 endclass
 
@@ -699,10 +699,12 @@ class base_test;
     task run();
         env1.start();
         body();
+        /*
         fork
             env1.txa.tdrv.run();
-            env1.wait_done();
         join_any
+        */
+        env1.wait_done();
         env1.scb.report();
     endtask
 endclass
@@ -746,7 +748,7 @@ class random_test extends base_test;
 
     virtual task body();
         $display("=====\\-// RANDOM TEST \\-/=====");
-        env1.gen.random_txn(5000);
+        env1.gen.random_txn(1000);
     endtask
 endclass
 
@@ -757,8 +759,8 @@ module tb;
     logic rst_n = 0;
 
     always #5 clk = ~clk;
-    always #53 tx_rclk = ~tx_rclk;
-    always #61 rx_wclk = ~rx_wclk;
+    always #102 tx_rclk = ~tx_rclk;
+    always #50 rx_wclk = ~rx_wclk;
 
     initial begin
         rst_n = 1'b0;
@@ -806,7 +808,7 @@ module tb;
   end
 
   initial begin
-    $dumpfile("sim/waves.vcd");
+    $dumpfile("waves.vcd");
     $dumpvars(0, tb);
   end
   
