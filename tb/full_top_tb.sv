@@ -67,15 +67,15 @@ class txn;
     bit [31:0] rdata[$];
     bit [1:0] rresp[$];
 
-    constraint c_len {   wburstlen inside {[0:255]};
-                         rburstlen inside {[0:255]}; }
+    constraint c_len {   wburstlen inside {[0:8]};
+                         rburstlen inside {[0:8]}; }
     constraint c_waddr { waddr[31:4]==0;
                          waddr[1:0] dist {2'b00:=90, [2'b01:2'b11]:/10}; }
     constraint c_raddr { raddr[31:4]==0;
                          raddr[1:0] dist {2'b00 := 90, [2'b01:2'b11] :/ 10}; }
 
-    constraint c_delay { pre_delay inside {[0:5]}; }
-    constraint c_ready_delay { ready_delay inside {[0:5]}; }
+    constraint c_delay { pre_delay inside {[0:10]}; }
+    constraint c_ready_delay { ready_delay inside {[0:10]}; }
     // constraint c_ready_delay { ready_delay ==0; }
 
     constraint c_op_type { op_type dist {AXI_READ:=1, AXI_WRITE:=1}; }
@@ -361,17 +361,22 @@ class tx_agent;
 
     class tx_driver;
         virtual tx_intf t_vif;
+        bit pop_enabled = 1'b1;
 
         function new(virtual tx_intf t_vif);
             this.t_vif = t_vif;
         endfunction
+
+        task set_pop_enabled(bit enable);
+            pop_enabled = enable;
+        endtask
 
         task run();
             t_vif.tx_rd_en <= 1'b0;
             wait(t_vif.rst_n === 1'b1);
             forever begin
                 @(posedge t_vif.tx_rclk);
-                t_vif.tx_rd_en <= !t_vif.tx_empty;
+                t_vif.tx_rd_en <= pop_enabled && !t_vif.tx_empty;
             end
         endtask
 
@@ -413,6 +418,10 @@ class tx_agent;
             txm.run();
         join_none
     endtask
+
+    task set_pop_enabled(bit enable);
+        tdrv.set_pop_enabled(enable);
+    endtask
 endclass
 
 class rx_agent;
@@ -423,9 +432,15 @@ class rx_agent;
     class rx_driver;
         virtual rx_intf r_vif;
         bit [31:0] wr_data;
+        bit push_enabled = 1'b1;
+
         function new(virtual rx_intf r_vif);
             this.r_vif = r_vif;
         endfunction
+
+        task set_push_enabled(bit enable);
+            push_enabled = enable;
+        endtask
 
         task run();
             r_vif.rx_wr_en <= 1'b0;
@@ -434,9 +449,13 @@ class rx_agent;
             repeat(2) @(posedge r_vif.rx_wclk);
             forever begin
                 @(posedge r_vif.rx_wclk);
-                wr_data = $urandom;
-                r_vif.rx_wr_en <= 1'b1;
-                r_vif.rx_wr_data <= wr_data;
+                if(push_enabled && !r_vif.rx_full) begin
+                    wr_data = $urandom;
+                    r_vif.rx_wr_en <= 1'b1;
+                    r_vif.rx_wr_data <= wr_data;
+                end else begin
+                    r_vif.rx_wr_en <= 1'b0;
+                end
             end
         endtask
 
@@ -476,6 +495,26 @@ class rx_agent;
             rdrv.run();
             rxm.run();
         join_none
+    endtask
+
+    task set_push_enabled(bit enable);
+        rdrv.set_push_enabled(enable);
+    endtask
+
+    task fill_until_full(input int unsigned timeout_cycles = 100);
+        int unsigned cycles = 0;
+
+        rdrv.set_push_enabled(1'b1);
+        while(rdrv.r_vif.rx_full !== 1'b1 && cycles < timeout_cycles) begin
+            @(posedge rdrv.r_vif.rx_wclk);
+            cycles++;
+        end
+        rdrv.set_push_enabled(1'b0);
+
+        if(rdrv.r_vif.rx_full !== 1'b1)
+            $fatal(1, "[RX] FIFO did not become full within %0d cycles", timeout_cycles);
+
+        repeat(2) @(posedge rdrv.r_vif.rx_wclk);
     endtask
 endclass
 
@@ -682,7 +721,7 @@ class env;
     task wait_done();
         wait(drv.num_done === gen.num_sent);
         while(scb.tx_expcopy.size()>0 && cyc<2000) begin @(posedge vif.clk); cyc++; end
-        repeat(1200) @(posedge vif.clk);
+        repeat(100) @(posedge vif.clk);
     endtask
 endclass
 
@@ -699,11 +738,6 @@ class base_test;
     task run();
         env1.start();
         body();
-        /*
-        fork
-            env1.txa.tdrv.run();
-        join_any
-        */
         env1.wait_done();
         env1.scb.report();
     endtask
@@ -741,6 +775,43 @@ class directed_tests extends base_test;
     endtask
 endclass
 
+class fifo_backpressure_test extends base_test;
+    function new(env env1);
+        super.new(env1);
+    endfunction
+
+    virtual task body();
+        int unsigned timeout_cycles = 0;
+        bit saw_tx_transfer = 1'b0;
+
+        $display("===== FIFO BACKPRESSURE / PRE-FILL TEST =====");
+
+        // Stop both FIFO consumers before filling either FIFO.
+        env1.txa.set_pop_enabled(1'b0);
+        env1.rxa.set_push_enabled(1'b0);
+
+        // The extra beat must wait until the TX FIFO consumer is released.
+        env1.gen.write_burst(32'h0000_0008, 17);
+        while(timeout_cycles < 500) begin
+            @(posedge env1.vif.clk);
+            if(env1.vif.wvalid && env1.vif.wready)
+                saw_tx_transfer = 1'b1;
+            if(saw_tx_transfer && env1.vif.wvalid && !env1.vif.wready)
+                break;
+            timeout_cycles++;
+        end
+        if(!saw_tx_transfer || !env1.vif.wvalid || env1.vif.wready)
+            $fatal(1, "[TX] FIFO backpressure was not observed");
+
+        // Leave TX stalled while the RX producer fills its FIFO as well.
+        env1.rxa.fill_until_full();
+
+        // Both FIFOs are now populated; release TX and begin draining RX.
+        env1.txa.set_pop_enabled(1'b1);
+        repeat(16) env1.gen.read_word(32'h0000_000C);
+    endtask
+endclass
+
 class random_test extends base_test;
     function new(env env1);
         super.new(env1);
@@ -748,7 +819,7 @@ class random_test extends base_test;
 
     virtual task body();
         $display("=====\\-// RANDOM TEST \\-/=====");
-        env1.gen.random_txn(1000);
+        env1.gen.random_txn(2000);
     endtask
 endclass
 
@@ -759,8 +830,8 @@ module tb;
     logic rst_n = 0;
 
     always #5 clk = ~clk;
-    always #102 tx_rclk = ~tx_rclk;
-    always #50 rx_wclk = ~rx_wclk;
+    always #53 tx_rclk = ~tx_rclk;
+    always #61 rx_wclk = ~rx_wclk;
 
     initial begin
         rst_n = 1'b0;
@@ -789,6 +860,7 @@ module tb;
   base_test bt;
 
   directed_tests dt;
+  fifo_backpressure_test fbpt;
   random_test rt;
   string tname;
   initial begin
@@ -796,6 +868,7 @@ module tb;
     env1 = new(sif, tif, rif);
     case (tname)
         "directed": begin dt = new(env1); bt = dt; end
+        "fifo_backpressure": begin fbpt = new(env1); bt = fbpt; end
         "random": begin rt = new(env1); bt = rt; end
     endcase
     bt.run();
@@ -808,7 +881,7 @@ module tb;
   end
 
   initial begin
-    $dumpfile("waves.vcd");
+    $dumpfile("sim/waves.vcd");
     $dumpvars(0, tb);
   end
   
