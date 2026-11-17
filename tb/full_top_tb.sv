@@ -67,8 +67,8 @@ class txn;
     bit [31:0] rdata[$];
     bit [1:0] rresp[$];
 
-    constraint c_len {   wburstlen inside {[0:8]};
-                         rburstlen inside {[0:8]}; }
+    constraint c_len {   wburstlen inside {[0:127]};
+                         rburstlen inside {[0:127]}; }
     constraint c_waddr { waddr[31:4]==0;
                          waddr[1:0] dist {2'b00:=90, [2'b01:2'b11]:/10}; }
     constraint c_raddr { raddr[31:4]==0;
@@ -227,6 +227,7 @@ class driver;
                 break;
             end
         end
+        cycle_before_timeout = 0;
         t.bresp = vif.bresp;
         vif.bready <= 1'b0;
     endtask
@@ -263,6 +264,7 @@ class driver;
                     return;
                 end
             end
+            cycle_before_timeout = 0;
             t.rdata.push_back(vif.rdata);
             t.rresp.push_back(vif.rresp);
         end
@@ -489,7 +491,7 @@ class rx_agent;
         rdrv = new(r_vif);
         rxm = new(r_vif, rxm2scb);
     endfunction
-
+    
     task run();
         fork
             rdrv.run();
@@ -538,7 +540,7 @@ class scoreboard;
         this.tx2scb = tx2scb;
         this.rx2scb = rx2scb;
     endfunction
-
+    
     task run();
         fork
             axi_check();
@@ -654,7 +656,7 @@ class scoreboard;
             else foreach(t.rresp[i]) print_response("TX READ not allowed", 2'b10, t.rresp[i]);
         end else foreach(t.rresp[i]) print_response("Misaligned READ op", 2'b10, t.rresp[i]);
     endtask
-
+    
     rx_agent::rx_txn rtx;
     task rx_check();
         forever begin
@@ -684,7 +686,7 @@ class env;
     scoreboard scb;    
     tx_agent txa;
     rx_agent rxa;
-
+    
     mailbox #(txn) gen2drv;
     mailbox #(txn) mon2scb;
     mailbox #(tx_agent::tx_txn) tx2scb;
@@ -823,6 +825,63 @@ class random_test extends base_test;
     endtask
 endclass
 
+class addr_fifo_test extends base_test;
+
+    txn wtxn_queue[$];
+    txn rtxn_queue[$];
+
+    function new(env env1);
+        super.new(env1);
+    endfunction
+
+    virtual task body();
+        $display("======\\-// ADDRESS FIFO TEST \\-/=====");
+        env1.drv.reset_signals();
+        wait(env1.vif.rst_n===1'b1);
+        repeat(2) @(posedge env1.vif.clk);
+        fork
+            waddr_fifo_test();
+            raddr_fifo_test();
+        join
+    endtask
+
+    task waddr_fifo_test();
+        repeat(17) begin
+            txn t;
+            t = new();
+            
+            if(!t.randomize() with { op_type == AXI_WRITE; waddr[1:0]==2'b00; }) $fatal(1, "[TEST] Packet randomization failed!");
+            $display("[TEST] Driving awaddr: awaddr=%h awburst=%0d", t.waddr, t.wburstlen);
+            env1.drv.drive_waddr(t);
+            $display("[TEST] Driven awaddr");
+            wtxn_queue.push_back(t);
+        end
+        foreach(wtxn_queue[i]) begin
+            $display("[TEST] Driving wdata: wdata=%h wstrb=%0h", wtxn_queue[i].wdata[i], wtxn_queue[i].wstrb[i]);
+            env1.drv.drive_wdata(wtxn_queue[i]);
+            env1.drv.drive_resp(wtxn_queue[i]);
+            $display("[TEST] Driving bresp: bresp=%b", wtxn_queue[i].bresp);
+        end
+    endtask
+
+    task raddr_fifo_test();
+        repeat(17) begin
+            txn t;
+            t = new();
+            if(!t.randomize() with { op_type == AXI_READ; raddr[1:0]==2'b00; }) $fatal(1, "[TEST] Packet randomization failed!");
+            $display("[TEST] Driving araddr: araddr=%h awburst=%0d", t.raddr, t.rburstlen);
+            env1.drv.drive_ar(t);
+            $display("[TEST] Driven araddr");
+            rtxn_queue.push_back(t);
+        end
+        foreach(rtxn_queue[i]) begin
+            $display("[TEST] Driving rdata lines");
+            env1.drv.drive_r(rtxn_queue[i]);
+            repeat(rtxn_queue[i].rburstlen) $display("[TEST] Driven rdata: rdata=%h, rresp=%b", rtxn_queue[i].rdata.pop_front(), rtxn_queue[i].rresp.pop_front());
+        end
+    endtask
+endclass
+
 module tb;
     logic clk = 0;
     logic tx_rclk = 0;
@@ -858,10 +917,10 @@ module tb;
 
   env env1;
   base_test bt;
-
   directed_tests dt;
   fifo_backpressure_test fbpt;
   random_test rt;
+  addr_fifo_test at;
   string tname;
   initial begin
     if(!$value$plusargs("TEST=%s", tname)) tname="directed";
@@ -870,6 +929,7 @@ module tb;
         "directed": begin dt = new(env1); bt = dt; end
         "fifo_backpressure": begin fbpt = new(env1); bt = fbpt; end
         "random": begin rt = new(env1); bt = rt; end
+        "addr_test": begin at = new(env1); bt = at; end
     endcase
     bt.run();
     $finish;
