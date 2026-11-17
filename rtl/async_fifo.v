@@ -83,7 +83,7 @@ module memory #(
     parameter DATA_WIDTH = 32,
     parameter MEM_DEPTH = 16
 ) (
-    output reg [DATA_WIDTH-1:0]     read_data,
+    output [DATA_WIDTH-1:0]         read_data,
     input [DATA_WIDTH-1:0]          write_data,
     input [$clog2(MEM_DEPTH)-1:0]   read_addr, write_addr,
     input                           rclk, ren, empty,

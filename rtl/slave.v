@@ -211,8 +211,8 @@ always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         isRX <= 1'b0; isCTRL <= 1'b0; isSTAT <= 1'b0;
         rvalid <= 1'b0; rresp <= 2'b0;
-        r_burstcnt <= 1'b0;
-        rd_addr <= 32'hF; rd_en_raddr <= 1'b0;
+        r_burstcnt <= 8'b0;
+        rd_addr <= 32'hFFFF_FFFF; rd_en_raddr <= 1'b0;
         r_state <= R_IDLE;
 //        rdata_q <= 0;
     end
