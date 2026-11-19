@@ -1,233 +1,457 @@
-# AXI4 Full Slave with Control, Status, and FIFO Interface
+# AXI4 Slave with Control, Status, and FIFO Interfaces
 
-This repository implements a custom AXI4 Full-style slave peripheral in Verilog. It provides:
+A Verilog/SystemVerilog implementation of a custom AXI4-style slave peripheral. The design provides control and status registers, transmit and receive asynchronous FIFOs, AXI-style write/read channels, and clock-domain crossing support.
 
-- a control register for configuration/control
-- a status register for queue and state reporting
-- a transmit (TX) FIFO interface
-- a receive (RX) FIFO interface
-- asynchronous FIFO-based clock-domain crossing for peripheral communication
 
-The design is intended for embedded and FPGA-style peripheral interfacing where a host processor or master device interacts with a custom logic block over an AXI-like interface.
+## Features
+
+- Simplified AXI4-style write and read channels
+- Ready/valid handshakes for address, data, and response channels
+- 32-bit control register
+- 32-bit status register
+- Independent transmit and receive asynchronous FIFOs
+- Separate TX and RX clocks
+- Gray-code pointer synchronization for clock-domain crossing
+- Write strobes for transmit data
+- Burst address and length handling
+- SLVERR responses for unaligned or unsupported accesses
+- Verilator and QuestaSim testbench support
+- Yosys synthesis outputs and Xilinx-focused netlists
+
+## Register Map
+
+| Address | Access | Size | Description |
+|---|---:|---:|---|
+| `0x00000000` | Read/Write | 32-bit | Control register |
+| `0x00000004` | Read-only | 32-bit | Status register |
+| `0x00000008` | Write | 32-bit | TX FIFO data |
+| `0x0000000C` | Read | 32-bit | RX FIFO data |
+
+### Status Register
+
+| Bit | Description |
+|---:|---|
+| 0 | Reserved, currently always `0` |
+| 1 | RX data available: `0` = empty, `1` = not empty |
+| 2 | TX FIFO full indicator |
+| 31:3 | Reserved |
+
+## Architecture
+
+```text
+AXI Master
+    |
+    | AW/ W / B channels
+    | AR / R channels
+    v
++------------------------------+
+|            top               |
+|                              |
+|    +------------------+      |
+|    |      slave       |      |
+|    | control/status   |      |
+|    | write/read FSMs  |      |
+|    +-------+----------+      |
+|            |                 |
+|     +------+--------+        |
+|     |               |        |
+| TX async FIFO  RX async FIFO |
++------------------------------+
+```
+
+The AXI write channel decodes address `0x00000000` for the control register and `0x00000008` for TX FIFO writes. Unsupported or misaligned accesses return `SLVERR`.
+
+The AXI read channel decodes address `0x00000000` for the control register, `0x00000004` for status, and `0x0000000C` for RX FIFO reads.
+
+The TX FIFO transfers data from the AXI clock domain to `tx_rclk`. The RX FIFO transfers peripheral data from `rx_wclk` into the AXI clock domain.
+
+## Clock Domains
+
+| Signal | Clock Domain | Purpose |
+|---|---|---|
+| `clk` | Main clock | AXI interface and slave logic |
+| `tx_rclk` | TX read clock | Reads data from the transmit FIFO |
+| `rx_wclk` | RX write clock | Writes peripheral data into the receive FIFO |
 
 ## Repository Structure
 
 ```text
 axi4-slave/
-├── README.md
 ├── rtl/
-│   ├── async_fifo.v
+│   ├── top.v
 │   ├── slave.v
-│   ├── sync_fifo.v
-│   └── top.v
-├── sim/
-│   ├── async_fifo.vcd
-│   ├── sync_fifo.vcd
-│   ├── tb_slave.vcd
-│   └── tb_top.vcd
+│   ├── async_fifo.v
+│   └── sync_fifo.v
 ├── tb/
-│   (testbench files are present in the repository but are not documented here)
-│
-└── verilator_script.sh
-
+│   ├── full_top_tb.sv
+│   ├── tb_top.sv
+│   ├── tb_slave.sv
+│   ├── tb_sync_fifo.sv
+│   └── tbAsyncFifo.sv
+├── sim/
+│   └── VCD waveform files
+├── synth/
+│   ├── gate-level/
+│   │   ├── Yosys gate-level diagrams
+│   │   └── Flattened module diagrams
+│   └── xilinx/
+│       ├── Xilinx-oriented synthesis diagrams
+│       └── Generated DOT/PDF outputs
+├── netlist/
+│   ├── top.v
+│   └── top_xilinx.v
+├── docs/
+│   ├── slave.jpg
+│   ├── async_fifo.jpg
+│   ├── sync_fifo.jpg
+│   ├── fsm_slave_00.jpg
+│   └── fsm_slave_11.jpg
+├── verilator_script.sh
+├── run.do
+├── run_log.txt
+└── README.md
 ```
 
-## Running Instructions
-Clone the repo using
-```
-git clone https://github.com/singhanshuman01/axi4-slave
-```
-or if you use ssh
-```
-git clone git@github.com:singhanshuman01/axi4-slave.git
-```
-give executable permission to script and run
-```
-sudo chmod +x verilator_script.sh
-./verilator_script.sh
-```
+## Diagrams
 
-## RTL Overview
-
-### 1. `rtl/top.v`
-This is the top-level integration module.
-
-It connects:
-- the AXI-like slave logic
-- the transmit asynchronous FIFO
-- the receive asynchronous FIFO
-
-The module exposes the main AXI write/read interface and the external FIFO signals used to transfer data in and out of the peripheral domain.
-
-### 2. `rtl/slave.v`
-This is the main functional block of the design.
+### Slave RTL Overview
 
 ![Diagram](docs/slave.jpg "Diagram")
 
-It contains:
-- write-channel state machine
-- read-channel state machine
-- register access logic
-- status register generation
-- control register storage
-- address decode logic
-- TX FIFO write handling
-- RX FIFO read handling
-
-The slave supports a simplified AXI-style transaction flow and maps memory accesses to internal registers and FIFO operations.
-
-### 3. `rtl/sync_fifo.v`
-This is a single-clock synchronous FIFO used internally to store queued address metadata related to burst accesses.
-
-![Diagram](docs/sync_fifo.jpg "Diagram")
-
-It is used for:
-- write address buffering
-- read address buffering
-
-The FIFO uses standard pointer-based full/empty detection for a single clock domain.
-
-### 4. `rtl/async_fifo.v`
-This is a dual-clock asynchronous FIFO used to bridge between different clock domains.
-
-![Diagram](docs/async_fifo.jpg "Diagram")
-
-It contains:
-- memory storage
-- read and write pointer handlers
-- gray-code pointer synchronization
-- empty/full logic for the asynchronous domain crossing
-
-This FIFO is used to transfer data safely between the main AXI domain and external peripheral or system clocks.
-
-## Functional Behavior
-
-The slave behaves like a custom peripheral rather than a generic memory-mapped block.
-
-### Control and Status
-
-The design maintains two key internal registers:
-
-- `ctrl` — writable control register
-- `status` — read-only status register
-
-The status register is generated as:
-
-- `status[0] = 0`
-- `status[1] = !rx_empty`
-- `status[2] = tx_full`
-- `status[31:3] = 0`
-
-This makes the status word a simple summary of:
-- whether receive data is pending
-- whether the transmit queue is full
-
-### Write Channel
+### Slave Write FSM
 
 ![Diagram](docs/fsm_slave_00.jpg "Diagram")
 
-Write accesses are queued using a FIFO of address+burst metadata. The slave decodes the destination address and performs the corresponding action:
-
-- address group `00`: write to `ctrl`
-- address group `10`: write data into the TX FIFO
-- unaligned or unsupported addresses: respond with an error-like response (`bresp = 2'b10`)
-
-The TX payload is generated as:
-
-```verilog
-{wstrb, wdata}
-```
-
-This indicates that the transmitted word includes a write-byte-enable mask together with the payload data.
-
-### Read Channel
+### Slave Read FSM
 
 ![Diagram](docs/fsm_slave_11.jpg "Diagram")
 
-Read accesses are also queued and decoded in a similar fashion:
+### Synchronous FIFO
 
-- address group `00`: read `ctrl`
-- address group `01`: read `status`
-- address group `11`: read from the RX FIFO
-- unsupported addresses: return an error response
+![Diagram](docs/sync_fifo.jpg "Diagram")
 
-When reading from the RX FIFO, the design asserts `rx_rd_en` and returns the received payload value via `rdata`.
+### Asynchronous FIFO
 
-## AXI-Like Signaling Notes
+![Diagram](docs/async_fifo.jpg "Diagram")
 
-This is not a full vendor-validated AXI implementation. Instead, it implements a simplified AXI-style handshake that is sufficient for a custom peripheral interface.
+## Requirements
 
-Key characteristics:
-- ready/valid based handshaking
-- response channel support (`bresp`, `rresp`)
-- burst metadata stored with address requests
-- simplified address decode for custom peripheral register access
+The following tools can be used depending on the workflow:
 
-The design is intended for educational and embedded-system-style use, not as a drop-in replacement for a commercial AXI IP block.
+- [Verilator](https://www.veripool.org/verilator/) — linting and SystemVerilog simulation
+- [Yosys](https://yosyshq.net/yosys/) — synthesis and gate-level netlist generation
+- QuestaSim/ModelSim(optional) — coverage-enabled SystemVerilog simulation
+- GTKWave or another VCD viewer — waveform inspection
+- Graphviz — viewing or regenerating DOT diagrams
+- GNU Make or Bash — optional automation
 
-## Clock Domain Partitioning
+## Quick Start
 
-The design uses multiple clock domains:
+Clone the repository:
 
-- `clk` — main AXI/control domain
-- `tx_rclk` — read clock for TX FIFO
-- `rx_wclk` — write clock for RX FIFO
+```bash
+git clone https://github.com/singhanshuman01/axi4-slave.git
+cd axi4-slave
+```
 
-The asynchronous FIFO ensures safe transfer of data between these domains using pointer synchronization and gray code.
+## Verilator Simulation
 
-## File-by-File Summary
+The included script builds the SystemVerilog testbench with Verilator:
 
-### `rtl/async_fifo.v`
-Implements a dual-clock asynchronous FIFO with:
-- memory array
-- read/write pointer handling
-- empty/full detection
-- clock-domain crossing logic
+```bash
+chmod +x verilator_script.sh
+./verilator_script.sh
+```
 
-### `rtl/sync_fifo.v`
-Implements a standard synchronous FIFO for single-domain buffering.
+The script compiles the RTL and testbench in binary/timing mode, enables tracing, suppresses selected non-fatal warnings, and places generated files under `vsim/`.
 
-### `rtl/slave.v`
-Contains the protocol logic and register access behavior.
+The exact command can also be run directly:
 
-### `rtl/top.v`
-Instantiates the FIFOs and the AXI-like slave, connecting the peripheral interface together.
+```bash
+verilator --binary --timing --trace \
+  -j 0 \
+  -Wno-fatal \
+  -Wno-lint \
+  -Wno-style \
+  -Wno-TIMESCALEMOD \
+  -Wno-CONSTRAINTIGN \
+  --top-module tb \
+  -Mdir vsim \
+  rtl/sync_fifo.v \
+  rtl/async_fifo.v \
+  rtl/slave.v \
+  rtl/top.v \
+  tb/full_top_tb.sv
+```
 
-## Intended Usage
+After compilation, run the generated executable:
 
-This design is intended to sit between:
-- a host/master interface using AXI-style transactions
-- external peripheral logic that produces or consumes data streams
+```bash
+./vsim/Vtb
+```
 
-Typical use cases include:
-- DMA-like stream transfer interfaces
-- custom peripheral-to-processor communication
-- FPGA/ASIC data exchange with control/status handshakes
+To select a test:
 
-## Limitations and Notes
+```bash
+./vsim/Vtb +TEST=directed
+./vsim/Vtb +TEST=random
+./vsim/Vtb +TEST=fifo_backpressure
+./vsim/Vtb +TEST=addr_test
+```
 
-This repository is best viewed as a learning-oriented implementation rather than a production-grade AXI IP block.
+Generated simulation traces can be viewed with a VCD-compatible waveform viewer.
 
-Current caveats include:
-- simplified AXI compatibility
-- custom address decoding rather than a full memory map
-- limited burst handling logic
-- educational FIFO and control flow implementation
+## QuestaSim/ModelSim Simulation
 
-## Simulation Files
+Run the provided script from the repository directory:
 
-The `sim/` directory includes waveform files (`.vcd`) associated with FIFO and slave-level simulations. These are useful for understanding expected signal timing and waveform behavior.
+```bash
+vsim -do run.do
+```
 
-## License
+The script:
 
-No explicit license file is included in the repository. Users should check the repository settings and upstream licensing information before production use or redistribution.
+1. Creates or recreates the `work` library.
+2. Compiles the RTL and `tb/full_tb_top.sv`.
+3. Optimizes the testbench.
+4. Runs simulation with coverage enabled.
+5. Disables selected coverage points.
+6. Saves coverage data to `cov_data4.ucdb`.
+7. Exits after the simulation completes.
 
-## Summary
+The default address test is selected by:
 
-This project demonstrates a custom AXI4 Full-style slave with:
-- control and status registers
-- TX/RX FIFO interfaces
-- asynchronous clock-domain safe data movement
-- lightweight peripheral-style protocol behavior
+```text
++TEST=addr_test
+```
 
-It is a useful reference for understanding custom RTL design patterns in Verilog, especially around register interfaces, burst buffering, and clock-domain crossing.
+The test selection can be changed in `run.do`:
+
+```text
+vsim -coverage tb_opt +TEST=random
+```
+
+Supported test names in `full_top_tb.sv` include:
+
+- `directed`
+- `random`
+- `fifo_backpressure`
+- `addr_test`
+
+## Waveform Viewing
+
+Simulation files are stored in `sim/` with the `.vcd` extension:
+
+```text
+sim/
+├── async_fifo.vcd
+├── sync_fifo.vcd
+├── tb_slave.vcd
+├── tb_top.vcd
+└── waves.vcd
+```
+
+Open a VCD file in GTKWave:
+
+```bash
+gtkwave sim/waves.vcd
+```
+
+## Yosys Synthesis
+
+A typical Yosys synthesis flow for the top-level module is:
+
+```yosys
+read_verilog rtl/sync_fifo.v
+read_verilog rtl/async_fifo.v
+read_verilog rtl/slave.v
+read_verilog rtl/top.v
+hierarchy -top top
+proc
+opt
+fsm
+opt
+memory
+opt
+techmap
+opt
+write_verilog netlist/top.v
+stat
+```
+
+To synthesize the individual slave module:
+
+```yosys
+read_verilog rtl/sync_fifo.v
+read_verilog rtl/slave.v
+hierarchy -top slave
+proc
+opt
+fsm
+opt
+memory
+opt
+stat
+show
+```
+
+Generated gate-level diagrams and PDF renders are available under:
+
+```text
+synth/gate-level/
+synth/xilinx/
+```
+
+The files with `.dot` extensions can be displayed or converted using Graphviz:
+
+```bash
+dot -Tpdf synth/gate-level/top.dot -o synth/gate-level/top.pdf
+dot -Tsvg synth/gate-level/top.dot -o top.svg
+```
+
+To inspect the Xilinx-oriented synthesis graph:
+
+```bash
+dot -Tpdf synth/xilinx/top.dot -o synth/xilinx/top.pdf
+dot -Tpdf synth/xilinx/slave.dot -o synth/xilinx/slave.pdf
+```
+
+## Netlist Files
+
+The repository includes generated Verilog representations:
+
+```text
+netlist/top.v
+netlist/top_xilinx.v
+```
+
+These netlists are synthesis outputs or synthesis-oriented representations and are not recommended as the primary source for RTL modifications. Make changes in `rtl/` and regenerate the netlist.
+
+## RTL Verification Notes
+
+The testbench environment includes:
+
+- AXI transaction generation
+- Address and write-data driving
+- Read-data monitoring
+- TX and RX FIFO agents
+- Scoreboard-based checking
+- Directed tests
+- Randomized transactions
+- FIFO backpressure testing
+- Address-FIFO stress testing
+- Timeout detection
+- VCD tracing
+
+Example areas covered by the testbench include:
+
+- Control register writes and reads
+- Status register reads
+- TX FIFO writes
+- RX FIFO reads
+- Misaligned accesses
+- Unsupported address responses
+- Burst transactions
+- TX FIFO overflow/backpressure
+- RX FIFO filling
+- Asynchronous clock-domain behavior
+- Address FIFO stress
+- AXI response channel behavior
+
+## Linting
+
+Verilator can be used to perform RTL linting:
+
+```bash
+verilator --lint-only \
+  -Wall \
+  rtl/sync_fifo.v \
+  rtl/async_fifo.v \
+  rtl/slave.v \
+  rtl/top.v
+```
+
+Warnings can be narrowed with suppression flags if the design contains intentional constructs:
+
+```bash
+verilator --lint-only \
+  -Wall \
+  -Wno-fatal \
+  rtl/sync_fifo.v \
+  rtl/async_fifo.v \
+  rtl/slave.v \
+  rtl/top.v
+```
+
+## AXI Interface Summary
+
+### Write Address
+
+- `awaddr`
+- `awburst`
+- `awvalid`
+- `awready`
+
+### Write Data
+
+- `wdata`
+- `wstrb`
+- `wvalid`
+- `wready`
+
+### Write Response
+
+- `bresp`
+- `bvalid`
+- `bready`
+
+### Read Address
+
+- `araddr`
+- `arburst`
+- `arvalid`
+- `arready`
+
+### Read Data
+
+- `rdata`
+- `rresp`
+- `rvalid`
+- `rready`
+
+The write and read address channels store burst metadata in synchronous FIFOs before processing. The design uses `awburst` and `arburst` fields as burst-length metadata.
+
+## Peripheral Interface Summary
+
+### TX FIFO read interface
+
+- `tx_rclk`
+- `tx_empty`
+- `tx_rd_en`
+- `tx_rd_data`
+
+### RX FIFO write interface
+
+- `rx_wclk`
+- `rx_full`
+- `rx_wr_en`
+- `rx_wr_data`
+
+These two write/read channels can be used by peripherals like spi/i2c/uart etc.
+
+
+## Limitations
+
+This implementation is intended primarily for educational and prototype use. It is a custom AXI-style slave rather than a complete vendor-verified AXI4 IP block.
+
+Current limitations include:
+
+- Not a full AXI4 protocol implementation
+- Custom register and address decoding
+- Simplified burst handling
+- Limited transfer-size support
+- No AXI ID or cache fields
+- No formal AXI interconnect validation
+- Async FIFO implementation should be reviewed and stress-tested for timing and metastability constraints
+- No timing constraints or FPGA constraints files
+- No automated CI build configuration
